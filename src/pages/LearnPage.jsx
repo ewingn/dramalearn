@@ -27,6 +27,7 @@ export default function LearnPage() {
       descriptionKey:
         "zh-tw:化身偵探，在撲朔迷離的案件中學習中文。掌握正式的詢問技巧、邏輯推理的表達方式，以及台灣警匪劇的專業術語。|zh-cn:化身侦探，在扑朔迷离的案件中学习中文。掌握正式的询问技巧、逻辑推理的表达方式，以及台湾警匪剧的专业术语。|en:Become a detective and learn Chinese through complex cases. Master formal questioning techniques, logical reasoning expressions, and professional terminology from Taiwanese crime dramas.",
       path: "/learn/mystery",
+      comingSoon: true, // Mark as coming soon
     },
     {
       id: "classics",
@@ -38,6 +39,7 @@ export default function LearnPage() {
       descriptionKey:
         "zh-tw:重溫經典台劇的魅力時刻，體驗豪門世家的愛恨情仇。學習不同社會階層的語言差異，掌握優雅與霸氣並存的中文表達。|zh-cn:重温经典台剧的魅力时刻，体验豪门世家的爱恨情仇。学习不同社会阶层的语言差异，掌握优雅与霸气并存的中文表达。|en:Relive classic Taiwanese drama moments and experience wealthy family love-hate relationships. Learn language differences across social classes and master elegant yet assertive Chinese expressions.",
       path: "/learn/classics",
+      comingSoon: true, // Mark as coming soon
     },
     {
       id: "fate",
@@ -49,6 +51,7 @@ export default function LearnPage() {
       descriptionKey:
         "zh-tw:相信命運的安排，體驗意外邂逅帶來的浪漫愛情。學習表達驚喜、感動和深情的中文方式，掌握浪漫告白的藝術。|zh-cn:相信命运的安排，体验意外邂逅带来的浪漫爱情。学习表达惊喜、感動和深情的中文方式，掌握浪漫告白的艺术。|en:Believe in destiny and experience romantic love through unexpected encounters. Learn to express surprise, emotion, and deep feelings in Chinese, mastering the art of romantic confessions.",
       path: "/learn/fate",
+      comingSoon: true, // Mark as coming soon
     },
     {
       id: "modern",
@@ -60,6 +63,7 @@ export default function LearnPage() {
       descriptionKey:
         "zh-tw:探索職場、婚姻與自我成長的複雜課題。學習成年人之間細膩的對話，以及如何處理生活中的兩難。|zh-cn:探索职场、婚姻与自我成长的复杂课题。学习成年人之间细腻的对话，以及如何處理生活中的兩難。|en:Explore the complexities of work, marriage, and self-growth. Learn nuanced conversations between adults and how to navigate life's dilemmas.",
       path: "/learn/modern",
+      comingSoon: true, // Mark as coming soon
     },
     {
       id: "family",
@@ -71,6 +75,7 @@ export default function LearnPage() {
       descriptionKey:
         "zh-tw:從溫馨的家庭日常中學習。掌握家人間的對話、長輩的叮嚀、與兄弟姊妹的互動，感受最道地的台灣家庭氛圍。|zh-cn:从温馨的家庭日常中学习。掌握家人间的对话、長輩的叮嚀、與兄弟姊妹的互動，感受最道地的台灣家庭氛圍。|en:Learn from heartwarming family life. Master family conversations, elders' advice, and sibling interactions to experience authentic Taiwanese family vibes.",
       path: "/learn/family",
+      comingSoon: true, // Mark as coming soon
     },
   ];
 
@@ -90,6 +95,94 @@ export default function LearnPage() {
   const [currentLanguage, setCurrentLanguage] = useState(
     localStorage.getItem("dramalearn-language") || "zh-tw"
   );
+
+  const renderCategoryCard = (category) => {
+    const cardContent = (
+      <>
+        <span
+          className="category-icon"
+          style={{
+            fontSize: "2.5rem",
+            marginBottom: "15px",
+            display: "block",
+            opacity: category.comingSoon ? 0.5 : 1, // Dim the icon
+          }}
+        >
+          {category.icon}
+        </span>
+        <h4>
+          <span data-text={category.titleKey}>
+            {getTranslatedText(category.titleKey, currentLanguage)}
+          </span>
+        </h4>
+        <p className="drama-meta">
+          <span data-text={category.subtitleKey}>
+            {getTranslatedText(category.subtitleKey, currentLanguage)}
+          </span>
+        </p>
+        <p
+          style={{
+            marginTop: "10px",
+            fontSize: "0.9rem",
+            lineHeight: "1.4",
+            color: "#666",
+            opacity: category.comingSoon ? 0.5 : 1, // Dim the description
+          }}
+        >
+          <span data-text={category.descriptionKey}>
+            {getTranslatedText(
+              category.descriptionKey,
+              currentLanguage
+            )}
+          </span>
+        </p>
+        {category.comingSoon && (
+          <div style={{
+            marginTop: "10px",
+            fontSize: "1.1rem",
+            fontWeight: "bold",
+            color: "#e91e63",
+          }}>
+            <span data-text="zh-tw:即將推出|zh-cn:即将推出|en:Coming Soon">
+              {getTranslatedText("zh-tw:即將推出|zh-cn:即将推出|en:Coming Soon", currentLanguage)}
+            </span>
+          </div>
+        )}
+      </>
+    );
+
+    const cardStyle = {
+      textDecoration: "none",
+      color: "inherit",
+      opacity: category.comingSoon ? 0.7 : 1,
+      cursor: category.comingSoon ? "not-allowed" : "pointer",
+      padding: "20px",
+      borderRadius: "15px",
+      border: "2px solid #e0e0e0",
+      boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+      transition: "all 0.3s ease",
+    };
+
+    if (category.comingSoon) {
+      return (
+        <div className="drama-poster" style={cardStyle}>
+          {cardContent}
+        </div>
+      );
+    } else {
+      return (
+        <Link
+          key={category.id}
+          to={category.path}
+          state={{ backgroundLocation: location }}
+          className="drama-poster"
+          style={cardStyle}
+        >
+          {cardContent}
+        </Link>
+      );
+    }
+  };
 
   return (
     <div className="page-container">
@@ -127,56 +220,13 @@ export default function LearnPage() {
           <div
             className="drama-carousel"
             style={{
+              display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
               gap: "30px",
               marginTop: "40px",
             }}
           >
-            {categories.map((category) => (
-              <Link
-                key={category.id}
-                to={category.path}
-                state={{ backgroundLocation: location }} // <- modal route support
-                className="drama-poster"
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <span
-                  className="category-icon"
-                  style={{
-                    fontSize: "2.5rem",
-                    marginBottom: "15px",
-                    display: "block",
-                  }}
-                >
-                  {category.icon}
-                </span>
-                <h4>
-                  <span data-text={category.titleKey}>
-                    {getTranslatedText(category.titleKey, currentLanguage)}
-                  </span>
-                </h4>
-                <p className="drama-meta">
-                  <span data-text={category.subtitleKey}>
-                    {getTranslatedText(category.subtitleKey, currentLanguage)}
-                  </span>
-                </p>
-                <p
-                  style={{
-                    marginTop: "10px",
-                    fontSize: "0.9rem",
-                    lineHeight: "1.4",
-                    color: "#666",
-                  }}
-                >
-                  <span data-text={category.descriptionKey}>
-                    {getTranslatedText(
-                      category.descriptionKey,
-                      currentLanguage
-                    )}
-                  </span>
-                </p>
-              </Link>
-            ))}
+            {categories.map((category) => renderCategoryCard(category))}
           </div>
         </div>
       </section>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Heart, Clock, BookOpen, Users, Star, Play, Volume2, Target } from 'lucide-react';
-import GameMinigames from "./gameMinigames";
-import { gameStyles } from './gameStyles';
+import GameMinigames from "../components/game/minigames/gameMinigames.jsx";
+import { gameStyles } from "../components/game/styles/gameStyles.js";
 
 const EnhancedRomanceGame = () => {
   const [currentLanguage, setCurrentLanguage] = useState('zh-tw');
@@ -33,9 +33,8 @@ const EnhancedRomanceGame = () => {
 
   const timerRef = useRef(null);
 
-  // This function is correctly defined and will be passed as a prop
+  // This function is defined but no longer used for the Connections Game
   const generateConnectionsGame = async () => {
-    // ... (Your existing API call logic)
     const systemPrompt = "Generate a new Connections-style puzzle for a Chinese language learning game. The puzzle should have 4 categories with 4 related items in each. The items must be common Chinese words or characters, suitable for a beginner to intermediate learner. The response must be a JSON object with the specified schema.";
     const userQuery = "Create a Chinese Connections puzzle.";
     const apiKey = openaiApiKeyRef.current;
@@ -246,6 +245,13 @@ const EnhancedRomanceGame = () => {
     setCurrentMinigame(null);
   };
 
+  const handleGoBack = () => {
+    setGamePhase('scenario-intro');
+    setCurrentMinigame(null);
+    setGameActive(false);
+    clearTimeout(timerRef.current);
+  };
+
   const getMinigameTitle = (minigame) => {
     const titles = {
       note_writing: { 'zh-tw': '📝 傳紙條', 'zh-cn': '📝 传纸条', 'en': '📝 Pass Note' },
@@ -428,14 +434,14 @@ const EnhancedRomanceGame = () => {
             currentMinigame={currentMinigame}
             selectedCharacter={selectedCharacter}
             characters={characters}
-            generateConnectionsGame={generateConnectionsGame}
+            onGoBack={handleGoBack}
           />
         </div>
       </div>
     );
   };
 
-  const renderEnding = () => {
+const renderEnding = () => {
     let endingType, endingMessage, endingEmoji;
     
     if (crushAffection >= 80) {
@@ -451,6 +457,32 @@ const EnhancedRomanceGame = () => {
       endingMessage = { 'zh-tw': '還需要更多努力...', 'zh-cn': '还需要更多努力...', 'en': 'Need more effort...' };
       endingEmoji = '💪';
     }
+
+    const handleShare = () => {
+        const shareText = `我在《那些年，我們一起追的女孩》互動遊戲中達成了 ${t(endingType)}！
+        最終好感度: ${crushAffection}%
+        總分數: ${playerScore}
+        正確答案: ${gameStats.correctAnswers}/${gameStats.totalQuestions}
+        想挑戰看看嗎？一起來玩！#那些年 #中文學習`;
+
+        // Copy text to clipboard
+        navigator.clipboard.writeText(shareText)
+            .then(() => {
+                alert(t({
+                    'zh-tw': '結果已複製到剪貼簿，快去分享吧！',
+                    'zh-cn': '结果已复制到剪贴板，快去分享吧！',
+                    'en': 'Results copied to clipboard, go share them!'
+                }));
+            })
+            .catch(err => {
+                console.error('Failed to copy text: ', err);
+                alert(t({
+                    'zh-tw': '複製失敗，請手動複製以下文字：',
+                    'zh-cn': '复制失败，请手动复制以下文字：',
+                    'en': 'Failed to copy, please manually copy the following text:'
+                }) + '\n' + shareText);
+            });
+    };
 
     return (
       <div style={gameStyles.gameContainer}>
@@ -481,10 +513,15 @@ const EnhancedRomanceGame = () => {
           <button onClick={resetGame} style={gameStyles.playAgainButton}>
             {t({ 'zh-tw': '🔄 重新開始', 'zh-cn': '🔄 重新开始', 'en': '🔄 Play Again' })}
           </button>
+          
+          {/* Add the new Share button */}
+          <button onClick={handleShare} style={gameStyles.shareButton}>
+            {t({ 'zh-tw': '分享結果', 'zh-cn': '分享结果', 'en': 'Share Results' })}
+          </button>
         </div>
       </div>
     );
-  };
+};
 
   const MessageBox = () => {
     if (!messageBox.isVisible) return null;

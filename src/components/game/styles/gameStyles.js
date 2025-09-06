@@ -296,7 +296,11 @@ export const gameStyles = {
     maxWidth: '600px',
     margin: '0 auto',
     textAlign: 'center',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
+    boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '20px'
   },
   endingEmoji: {
     fontSize: '5rem',
@@ -336,7 +340,21 @@ export const gameStyles = {
     fontSize: '18px',
     fontWeight: 'bold',
     cursor: 'pointer',
-    boxShadow: '0 6px 20px rgba(233, 30, 99, 0.4)'
+    boxShadow: '0 6px 20px rgba(233, 30, 99, 0.4)',
+    transition: 'all 0.3s ease',
+    marginBottom: '10px'
+  },
+  shareButton: {
+    background: '#e91e63',
+    color: 'white',
+    border: 'none',
+    borderRadius: '30px',
+    padding: '15px 40px',
+    fontSize: '18px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    boxShadow: '0 6px 20px rgba(233, 30, 99, 0.4)',
+    transition: 'all 0.3s ease',
   },
   messageBoxOverlay: {
     position: 'fixed',
@@ -539,7 +557,6 @@ export const minigameStyles = {
     color: '#666',
     marginTop: '5px'
   },
-  // Connections Game Styles
   connectionsContainer: {
     padding: '20px',
     minHeight: '60vh',
@@ -550,6 +567,7 @@ export const minigameStyles = {
     background: '#f8f9fa',
     borderRadius: '10px',
     boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+    position: 'relative' // Add relative position for floating elements
   },
   connectionsHeader: {
     display: 'flex',
@@ -577,13 +595,13 @@ export const minigameStyles = {
     cursor: 'pointer',
     transition: 'all 0.2s ease-in-out',
     textAlign: 'center',
+    userSelect: 'none'
   },
   connectionsItemSelected: {
     background: '#a5b4fc',
     transform: 'scale(1.05)',
   },
   connectionsItemCorrect: {
-    background: '#86efac',
     color: 'white',
   },
   connectionsSubmitButton: {
@@ -603,11 +621,29 @@ export const minigameStyles = {
     paddingTop: '16px',
   },
   connectionsGroupCard: {
-    background: '#d1fae5',
-    borderLeft: '4px solid #34d399',
     borderRadius: '6px',
     padding: '12px',
     marginBottom: '8px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
   },
+};
+
+export const backButtonStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '8px',
+  background: 'white',
+  border: '1px solid #ddd',
+  borderRadius: '50px',
+  padding: '10px 20px',
+  fontSize: '14px',
+  fontWeight: 'bold',
+  cursor: 'pointer',
+  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+  transition: 'all 0.3s ease',
+  position: 'absolute',
+  top: '20px',
+  left: '20px',
+  zIndex: 100
 };

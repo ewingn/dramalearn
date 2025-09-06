@@ -1,414 +1,1004 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useOutletContext, Link } from "react-router-dom";
+import React, { useState, useEffect, useRef } from 'react';
+import { Mic, MicOff, Heart, Clock, BookOpen, Users, Star, Play, Volume2 } from 'lucide-react';
 
-/** ========= helpers you already use ========= **/
-const parseTextMap = (key) =>
-  key.split("|").reduce((acc, item) => {
-    const [k, v] = item.split(":");
-    acc[k] = v;
-    return acc;
-  }, {});
-
-const t = (key, lang) => {
-  const m = parseTextMap(key);
-  return m[lang] || m["zh-tw"] || key;
-};
-
-/** ========= your existing API shim (kept compatible) ========= **/
-const callGeminiApi = async (systemPrompt, messages) => {
-  const apiKey = ""; // plug your key to go live
-  if (!apiKey) {
-    // graceful fallback so the UI still feels alive
-    return {
-      text:
-        "（系統）目前為示範模式：\n\n嗯…你突然叫我來天台，是想告白嗎？不要害羞啦，說吧。🙂",
-      sources: [],
-    };
+// === MINIGAME STYLES ===
+const minigameStyles = {
+  container: {
+    textAlign: 'center',
+    padding: '20px'
+  },
+  hint: {
+    background: '#e3f2fd',
+    padding: '15px',
+    borderRadius: '10px',
+    margin: '15px 0',
+    color: '#1976d2',
+    fontWeight: 'bold'
+  },
+  textarea: {
+    width: '100%',
+    height: '120px',
+    padding: '15px',
+    border: '2px solid #e0e0e0',
+    borderRadius: '10px',
+    fontSize: '16px',
+    resize: 'none',
+    fontFamily: 'inherit',
+    marginBottom: '15px',
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  noteStats: {
+    fontSize: '14px',
+    marginBottom: '20px',
+    fontWeight: 'bold'
+  },
+  submitButton: {
+    background: '#4caf50',
+    color: 'white',
+    border: 'none',
+    borderRadius: '25px',
+    padding: '15px 30px',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    boxShadow: '0 4px 15px rgba(76, 175, 80, 0.3)'
+  },
+  question: {
+    fontSize: '1.3rem',
+    fontWeight: 'bold',
+    margin: '20px 0',
+    padding: '20px',
+    background: '#f8f9fa',
+    borderRadius: '10px',
+    color: '#333'
+  },
+  quizOptions: {
+    display: 'grid',
+    gap: '10px',
+    marginTop: '20px'
+  },
+  quizOption: {
+    background: '#f5f5f5',
+    border: '2px solid #e0e0e0',
+    borderRadius: '10px',
+    padding: '15px',
+    fontSize: '16px',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    textAlign: 'left'
+  },
+  chatHistory: {
+    height: '200px',
+    overflowY: 'auto',
+    border: '2px solid #e0e0e0',
+    borderRadius: '10px',
+    padding: '15px',
+    marginBottom: '15px',
+    background: '#fafafa'
+  },
+  message: {
+    margin: '10px 0',
+    padding: '10px 15px',
+    borderRadius: '15px',
+    maxWidth: '80%'
+  },
+  playerMessage: {
+    background: '#e91e63',
+    color: 'white',
+    marginLeft: 'auto',
+    textAlign: 'right'
+  },
+  crushMessage: {
+    background: '#2196f3',
+    color: 'white',
+    marginRight: 'auto'
+  },
+  messageContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px'
+  },
+  voiceIcon: {
+    width: '16px',
+    height: '16px'
+  },
+  chatInputContainer: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center'
+  },
+  chatInput: {
+    flex: '1',
+    padding: '12px',
+    border: '2px solid #e0e0e0',
+    borderRadius: '25px',
+    fontSize: '16px',
+    outline: 'none'
+  },
+  voiceButton: {
+    color: 'white',
+    border: 'none',
+    borderRadius: '50%',
+    width: '45px',
+    height: '45px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  sendButton: {
+    background: '#4caf50',
+    color: 'white',
+    border: 'none',
+    borderRadius: '25px',
+    padding: '12px 20px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  },
+  activitiesContainer: {
+    display: 'grid',
+    gap: '15px',
+    marginTop: '20px'
+  },
+  activityButton: {
+    background: 'white',
+    border: '2px solid #e91e63',
+    borderRadius: '15px',
+    padding: '20px',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    textAlign: 'center'
+  },
+  activityChance: {
+    fontSize: '12px',
+    color: '#666',
+    marginTop: '5px'
   }
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-  const payload = {
-    contents: messages,
-    tools: [{ google_search: {} }],
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-  };
-  const res = await fetch(apiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const json = await res.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  return { text: text || "（系統）暫時沒有回覆，等等再試。", sources: [] };
 };
-/** ========================================== **/
 
-export default function YouthRomanceGamePage() {
-  // pull language from your <Outlet /> context
-  const { currentLanguage = "zh-tw" } = useOutletContext() || {};
+// === MINIGAMES COMPONENT ===
+const GameMinigames = ({
+  gameActive,
+  timeLeft,
+  currentLanguage,
+  t,
+  userInput,
+  setUserInput,
+  isRecording,
+  setIsRecording,
+  chatHistory,
+  setChatHistory,
+  gameStats,
+  setGameStats,
+  onComplete,
+  currentMinigame,
+  selectedCharacter,
+  characters
+}) => {
+  const [noteContent, setNoteContent] = useState('');
+  const [currentQuiz, setCurrentQuiz] = useState(null);
+  const [showResult, setShowResult] = useState(false);
 
-  /** ===== state ===== **/
-  const [phase, setPhase] = useState("intro"); // intro | role | chat | victory | fail
-  const [role, setRole] = useState(null); // male | female
-  const [botRole, setBotRole] = useState(null);
-  const [xp, setXp] = useState(() => Number(localStorage.getItem("yr_xp") || 0));
-  const [likeMeter, setLikeMeter] = useState(
-    () => Number(localStorage.getItem("yr_like") || 50)
-  );
-  const [messages, setMessages] = useState([]); // [{who:'bot'|'you', text:string}]
-  const [freeInput, setFreeInput] = useState("");
-  const chatRef = useRef(null);
+  // Quiz data
+  const quizSets = {
+    taiwan_culture: [
+      {
+        question: { 'zh-tw': '台灣最高的山是？', 'zh-cn': '台湾最高的山是？', 'en': 'What is the highest mountain in Taiwan?' },
+        options: [
+          { 'zh-tw': '玉山', 'zh-cn': '玉山', 'en': 'Yushan' },
+          { 'zh-tw': '阿里山', 'zh-cn': '阿里山', 'en': 'Alishan' },
+          { 'zh-tw': '合歡山', 'zh-cn': '合欢山', 'en': 'Hehuan Mountain' }
+        ],
+        correct: 0
+      },
+      {
+        question: { 'zh-tw': '台灣的國花是？', 'zh-cn': '台湾的国花是？', 'en': 'What is Taiwan\'s national flower?' },
+        options: [
+          { 'zh-tw': '櫻花', 'zh-cn': '樱花', 'en': 'Cherry Blossom' },
+          { 'zh-tw': '梅花', 'zh-cn': '梅花', 'en': 'Plum Blossom' },
+          { 'zh-tw': '蘭花', 'zh-cn': '兰花', 'en': 'Orchid' }
+        ],
+        correct: 1
+      }
+    ],
+    math: [
+      {
+        question: { 'zh-tw': '2x + 5 = 13，x = ?', 'zh-cn': '2x + 5 = 13，x = ?', 'en': '2x + 5 = 13, x = ?' },
+        options: ['4', '8', '3'],
+        correct: 0
+      },
+      {
+        question: { 'zh-tw': '√64 = ?', 'zh-cn': '√64 = ?', 'en': '√64 = ?' },
+        options: ['6', '8', '10'],
+        correct: 1
+      }
+    ]
+  };
 
-  /** ===== scene copy (TW-first) ===== **/
-  const scene = useMemo(
-    () => ({
-      title:
-        "zh-tw:校園告白場景｜天台的勇氣|zh-cn:校园告白场景｜天台的勇气|en:Campus Confession · Rooftop Courage",
-      desc:
-        "zh-tw:下課後，你約了他/她到天台。微風、斜陽、心跳聲…今天，也許是個改變關係的好日子。|zh-cn:下课后，你约了他/她到天台。微风、斜阳、心跳声……今天也许是改变关系的好日子。|en:After class you asked your crush to the rooftop. Breeze, sunset, heartbeat—maybe today changes everything.",
-      starter:
-        "zh-tw:你在這裡等我很久了嗎？有什麼事嗎？|zh-cn:你在这里等我很久了吗？有什么事吗？|en:Have you been waiting long? What’s up?",
-      choices: [
-        {
-          label: "zh-tw:說出心意|zh-cn:说出心意|en:Confess",
-          text: "我…其實我很喜歡你！",
-          like: +25,
-          xp: +100,
-          hints:
-            "zh-tw:語域：口語、真誠；可加『其實』或『老實說』來軟化語氣。台灣說法：有點害羞可加『蛤…』、或結尾用『啦』。|zh-cn:语域：口语、真诚……|en:Register: casual & sincere. Add softeners like “actually” or “to be honest”.",
-        },
-        {
-          label: "zh-tw:打哈哈|zh-cn:打哈哈|en:Play it off",
-          text: "沒事啦～只是想吹吹風。",
-          like: -10,
-          xp: +20,
-          hints:
-            "zh-tw:台灣語氣詞：啦、啊、嘛能降低正面交鋒。這句容易錯失時機。|zh-cn:……|en:Might miss the moment; filler particles reduce directness.",
-        },
-        {
-          label: "zh-tw:聊課業|zh-cn:聊课业|en:Homework…",
-          text: "欸…數學第十頁你會寫嗎？",
-          like: -20,
-          xp: +10,
-          hints:
-            "zh-tw:語用：轉移話題。若對方期待感情話題，會降好感。|zh-cn:……|en:Topic shift—likely reduces affection now.",
-        },
-      ],
-    }),
-    []
-  );
-
-  /** ===== derived text ===== **/
-  const title = t(scene.title, currentLanguage);
-  const desc = t(scene.desc, currentLanguage);
-
-  /** ===== effects ===== **/
+  // Initialize quiz on mount
   useEffect(() => {
-    if (phase === "intro") {
-      setMessages([]);
-      setRole(null);
-      setBotRole(null);
-      setLikeMeter((n) => (n === 50 ? n : 50));
+    if (currentMinigame === 'quiz_battle' && !currentQuiz) {
+      const allQuestions = [...quizSets.taiwan_culture, ...quizSets.math];
+      const randomQuestion = allQuestions[Math.floor(Math.random() * allQuestions.length)];
+      setCurrentQuiz(randomQuestion);
     }
-  }, [phase]);
+  }, [currentMinigame]);
 
-  useEffect(() => {
-    // victory / fail guards
-    if (likeMeter >= 100) setPhase("victory");
-    if (likeMeter <= 0) setPhase("fail");
-    localStorage.setItem("yr_like", String(likeMeter));
-  }, [likeMeter]);
+  // Speech Recognition
+  const startVoiceInput = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert(t({ 'zh-tw': '您的瀏覽器不支援語音輸入', 'zh-cn': '您的浏览器不支持语音输入', 'en': 'Your browser doesn\'t support voice input' }));
+      return;
+    }
 
-  useEffect(() => {
-    localStorage.setItem("yr_xp", String(xp));
-  }, [xp]);
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
 
-  useEffect(() => {
-    // scroll to bottom on new message
-    chatRef.current?.scrollTo(0, chatRef.current.scrollHeight);
-  }, [messages]);
+    recognition.lang = currentLanguage === 'zh-tw' ? 'zh-TW' :
+      currentLanguage === 'zh-cn' ? 'zh-CN' : 'en-US';
+    recognition.interimResults = false;
 
-  /** ===== ui helpers ===== **/
-  const likeColor =
-    likeMeter >= 80
-      ? "bg-green-500"
-      : likeMeter >= 60
-      ? "bg-yellow-500"
-      : likeMeter >= 30
-      ? "bg-orange-500"
-      : "bg-red-500";
+    setIsRecording(true);
+    recognition.start();
 
-  const roleCards = [
-    {
-      id: "male",
-      emoji: "👦",
-      name:
-        "zh-tw:男主角・柯景騰|zh-cn:男主角・柯景腾|en:Male Lead · Ko Ching-teng",
-      traits:
-        "zh-tw:皮但溫柔、刀子嘴豆腐心。|zh-cn:皮但温柔……|en:Mischief outside, soft inside.",
-      system:
-        "你是一個叫柯景騰的台灣校園男生。個性有點皮但很溫柔。現在在校園天台，對方可能想告白。請用繁體中文，口語、自然、帶一點調侃但不傷人。",
-    },
-    {
-      id: "female",
-      emoji: "👧",
-      name:
-        "zh-tw:女主角・沈佳宜|zh-cn:女主角・沈佳宜|en:Female Lead · Shen Chia-yi",
-      traits:
-        "zh-tw:溫柔理性、偶爾小脾氣。|zh-cn:温柔理性……|en:Warm, principled, slightly reserved.",
-      system:
-        "你是一個叫沈佳宜的台灣校園女生。氣質溫柔理性。現在在校園天台，對方可能想告白。請用繁體中文，禮貌、含蓄但不冷淡。",
-    },
-  ];
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setUserInput(transcript);
+      setIsRecording(false);
+    };
 
-  /** ===== actions ===== **/
-  const startRole = (id) => {
-    const me = id;
-    const bot = id === "male" ? "female" : "male";
-    setRole(me);
-    setBotRole(bot);
-    setPhase("chat");
-    // starter
-    setMessages([
-      { who: "bot", text: t(scene.starter, currentLanguage) },
-    ]);
+    recognition.onerror = () => {
+      setIsRecording(false);
+      alert(t({ 'zh-tw': '語音輸入失敗', 'zh-cn': '语音输入失败', 'en': 'Voice input failed' }));
+    };
+
+    recognition.onend = () => setIsRecording(false);
   };
 
-  const handleChoice = async (choice) => {
-    // user message
-    setMessages((prev) => [...prev, { who: "you", text: choice.text }]);
-    setXp((n) => n + choice.xp);
-    setLikeMeter((n) => Math.min(100, Math.max(0, n + choice.like)));
+  // AI Response Generator
+  const generateAIResponse = (userMessage) => {
+    const responses = {
+      positive: [
+        { 'zh-tw': '真的嗎？你好有趣呢！', 'zh-cn': '真的吗？你好有趣呢！', 'en': 'Really? You\'re so interesting!' },
+        { 'zh-tw': '哈哈，你總是能讓我笑', 'zh-cn': '哈哈，你总是能让我笑', 'en': 'Haha, you always make me laugh' },
+        { 'zh-tw': '你說話好幽默', 'zh-cn': '你说话好幽默', 'en': 'You\'re so funny when you talk' },
+        { 'zh-tw': '我也這麼想！', 'zh-cn': '我也这么想！', 'en': 'I think so too!' }
+      ],
+      neutral: [
+        { 'zh-tw': '這樣啊...', 'zh-cn': '这样啊...', 'en': 'I see...' },
+        { 'zh-tw': '嗯嗯，然後呢？', 'zh-cn': '嗯嗯，然后呢？', 'en': 'Mm-hmm, and then?' },
+        { 'zh-tw': '你覺得呢？', 'zh-cn': '你觉得呢？', 'en': 'What do you think?' }
+      ],
+      shy: [
+        { 'zh-tw': '你...你幹嘛這樣說', 'zh-cn': '你...你干嘛这样说', 'en': 'Why... why do you say that' },
+        { 'zh-tw': '臉紅了啦...', 'zh-cn': '脸红了啦...', 'en': 'I\'m blushing...' }
+      ]
+    };
 
-    // bot system prompt
-    const sys =
-      (botRole === "male" ? roleCards[0].system : roleCards[1].system) +
-      "\n\n回覆短小精悍、自然、有台灣語氣詞（啦、啊、欸、嘛）與情緒表情（…）。";
+    let responseType = 'neutral';
+    if (userMessage.length > 20 && (userMessage.includes('喜歡') || userMessage.includes('漂亮') || userMessage.includes('可愛'))) {
+      responseType = 'shy';
+    } else if (userMessage.length > 15 && userMessage.includes('?')) {
+      responseType = 'positive';
+    }
 
-    // build history in API format
-    const apiHistory = [
-      { role: "model", parts: [{ text: t(scene.starter, currentLanguage) }] },
-      { role: "user", parts: [{ text: choice.text }] },
-    ];
-    const resp = await callGeminiApi(sys, apiHistory);
-    setMessages((prev) => [...prev, { who: "bot", text: resp.text }]);
+    const responseArray = responses[responseType];
+    const randomResponse = responseArray[Math.floor(Math.random() * responseArray.length)];
+    return t(randomResponse);
   };
 
-  const handleFreeSend = async () => {
-    if (!freeInput.trim()) return;
-    const text = freeInput.trim();
-    setFreeInput("");
-    setMessages((prev) => [...prev, { who: "you", text }]);
-    setXp((n) => n + 30);
+  // Note Writing Minigame
+  const NoteWritingGame = () => {
+    const handleSubmit = () => {
+      const hasGoodLength = noteContent.length >= 15 && noteContent.length <= 60;
+      const hasNoKeywords = !noteContent.includes('考試') && !noteContent.includes('老師');
+      const success = hasGoodLength && hasNoKeywords;
+      const points = success ? 100 : 20;
 
-    const sys =
-      (botRole === "male" ? roleCards[0].system : roleCards[1].system) +
-      "\n\n回覆口語自然，根據對方語氣調整距離感。";
+      setGameStats(prev => ({ ...prev, notesExchanged: prev.notesExchanged + 1 }));
+      onComplete(success, points, success ?
+        t({ 'zh-tw': '她偷偷笑了，看起來很開心！', 'zh-cn': '她偷偷笑了，看起来很开心！', 'en': 'She smiled secretly and looks happy!' }) :
+        t({ 'zh-tw': '老師發現了，沒收了紙條...', 'zh-cn': '老师发现了，没收了纸条...', 'en': 'Teacher noticed and confiscated the note...' })
+      );
+    };
 
-    const apiHistory = [
-      { role: "model", parts: [{ text: t(scene.starter, currentLanguage) }] },
-      { role: "user", parts: [{ text }] },
-    ];
-    const resp = await callGeminiApi(sys, apiHistory);
-    setMessages((prev) => [...prev, { who: "bot", text: resp.text }]);
-  };
-
-  /** ===== UI ===== **/
-  return (
-    <div className="min-h-screen bg-gradient-to-tr from-pink-50 via-blue-50 to-pink-100 pt-24 pb-10">
-      <div className="container mx-auto px-4 max-w-3xl">
-        {/* Header strip */}
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 bg-clip-text text-transparent">
-              {title} <span className="align-middle">🌸</span>
-            </h1>
-            <p className="text-gray-600 mt-1 text-sm md:text-base">{desc}</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="px-3 py-1 rounded-full bg-white/70 shadow text-sm font-semibold">
-              XP：{xp}
-            </div>
-            <div className="w-28 md:w-36 h-2 rounded-full bg-white/60 overflow-hidden shadow-inner">
-              <div
-                className={`h-full ${likeColor} transition-all`}
-                style={{ width: `${likeMeter}%` }}
-                aria-label="Like meter"
-              />
-            </div>
-          </div>
+    return (
+      <div style={minigameStyles.container}>
+        <h3>{t({ 'zh-tw': '寫紙條給心儀的人', 'zh-cn': '写纸条给心仪的人', 'en': 'Write a Note to Your Crush' })}</h3>
+        <div style={minigameStyles.hint}>
+          {t({ 'zh-tw': '💡 提示：寫15-60字，避免提到考試或老師！', 'zh-cn': '💡 提示：写15-60字，避免提到考试或老师！', 'en': '💡 Hint: Write 15-60 characters, avoid mentioning exams or teachers!' })}
         </div>
-
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-pink-100 overflow-hidden">
-          {/* Phases */}
-          {phase === "intro" && (
-            <div className="p-6 md:p-8 text-center">
-              <p className="text-gray-700 leading-relaxed">
-                {t(
-                  "zh-tw:準備好在天台當主角了嗎？先選擇你的身份唷。|zh-cn:准备好在天台当主角了吗？先选择你的身份。|en:Ready to be the lead on the rooftop? Choose your role to begin.",
-                  currentLanguage
-                )}
-              </p>
-              <button
-                onClick={() => setPhase("role")}
-                className="mt-6 inline-block px-6 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-pink-500 to-pink-700 shadow hover:scale-105 transition"
-              >
-                {t("zh-tw:開始|zh-cn:开始|en:Start", currentLanguage)}
-              </button>
-            </div>
-          )}
-
-          {phase === "role" && (
-            <div className="p-6 md:p-8">
-              <h2 className="text-center text-xl md:text-2xl font-extrabold mb-6">
-                {t("zh-tw:選擇你的角色|zh-cn:选择你的角色|en:Choose Your Role", currentLanguage)}
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {roleCards.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => startRole(r.id)}
-                    className="rounded-xl border-2 border-transparent hover:border-pink-300 bg-gradient-to-br from-pink-50 to-blue-50 p-5 text-left shadow transition"
-                  >
-                    <div className="text-3xl">{r.emoji}</div>
-                    <div className="mt-2 font-bold">{t(r.name, currentLanguage)}</div>
-                    <div className="text-gray-600 text-sm">{t(r.traits, currentLanguage)}</div>
-                  </button>
-                ))}
-              </div>
-
-              <p className="mt-6 text-xs text-gray-500">
-                {t(
-                  "zh-tw:提示：對話中可使用臺灣語氣詞（啦、嘛、欸），更貼近在地語感。|zh-cn:提示：对话中可使用台湾语气词。|en:Tip: sprinkle Taiwanese particles like 啦/嘛/欸 for authentic tone.",
-                  currentLanguage
-                )}
-              </p>
-            </div>
-          )}
-
-          {phase === "chat" && (
-            <div className="flex flex-col h-[70vh]">
-              {/* chat area */}
-              <div ref={chatRef} className="flex-1 overflow-y-auto p-4 md:p-6 bg-gradient-to-br from-white to-pink-50/40">
-                {/* opener only once */}
-                {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    className={`mb-3 flex ${m.who === "you" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className={`flex items-end gap-2 max-w-[85%]`}>
-                      {m.who === "bot" && <div className="text-xl">🍎</div>}
-                      <div
-                        className={`rounded-2xl px-4 py-2 shadow text-[15px] leading-relaxed ${
-                          m.who === "you"
-                            ? "bg-indigo-500 text-white rounded-br-sm"
-                            : "bg-white text-gray-800 border border-pink-100 rounded-bl-sm"
-                        }`}
-                      >
-                        {m.text}
-                      </div>
-                      {m.who === "you" && <div className="text-xl">🫶</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* action bar */}
-              <div className="p-4 md:p-5 border-t bg-white">
-                {/* quick choices */}
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {scene.choices.map((c) => (
-                    <button
-                      key={c.text}
-                      onClick={() => handleChoice(c)}
-                      className="px-3 py-1.5 rounded-full bg-pink-100 hover:bg-pink-200 text-pink-700 text-sm font-semibold transition"
-                    >
-                      {t(c.label, currentLanguage)}
-                    </button>
-                  ))}
-                </div>
-
-                {/* hint line (mobile first) */}
-                <div className="text-xs text-gray-500 mb-3">
-                  {t("zh-tw:小撇步：長按選項可看語用提示。|zh-cn:小提示：长按选项可看语用提示。|en:Pro tip: long-press a choice to see usage hints.", currentLanguage)}
-                </div>
-
-                {/* free input */}
-                <div className="flex gap-2">
-                  <input
-                    value={freeInput}
-                    onChange={(e) => setFreeInput(e.target.value)}
-                    placeholder={t("zh-tw:自己輸入台詞…|zh-cn:自己输入台词…|en:Type your line…", currentLanguage)}
-                    className="flex-1 rounded-xl border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
-                  />
-                  <button
-                    onClick={handleFreeSend}
-                    className="px-4 py-2 rounded-xl font-semibold text-white bg-gradient-to-r from-pink-500 to-pink-700 shadow hover:scale-105 transition"
-                  >
-                    {t("zh-tw:送出|zh-cn:送出|en:Send", currentLanguage)}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {phase === "victory" && (
-            <div className="p-8 text-center">
-              <div className="text-5xl mb-3">💖</div>
-              <h3 className="text-2xl font-extrabold text-pink-600">
-                {t("zh-tw:成功告白！|zh-cn:成功告白！|en:Confession Successful!", currentLanguage)}
-              </h3>
-              <p className="text-gray-600 mt-2">
-                {t("zh-tw:好感度滿分，恭喜你解鎖新場景與進階台詞！|zh-cn:好感度满分，恭喜解锁新场景与进阶台词！|en:Max affection—new scenes & advanced lines unlocked!", currentLanguage)}
-              </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <Link to="/learn" className="px-5 py-2 rounded-full bg-gray-100 hover:bg-gray-200">
-                  ← {t("zh-tw:回到分類|zh-cn:回到分类|en:Back to Categories", currentLanguage)}
-                </Link>
-                <button onClick={() => setPhase("intro")} className="px-5 py-2 rounded-full text-white bg-indigo-500 hover:bg-indigo-600">
-                  {t("zh-tw:再玩一次|zh-cn:再玩一次|en:Play Again", currentLanguage)}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {phase === "fail" && (
-            <div className="p-8 text-center">
-              <div className="text-5xl mb-3">💔</div>
-              <h3 className="text-2xl font-extrabold text-rose-600">
-                {t("zh-tw:告白失敗…|zh-cn:告白失败…|en:Confession Failed…", currentLanguage)}
-              </h3>
-              <p className="text-gray-600 mt-2">
-                {t("zh-tw:別灰心，再換一種說法吧！|zh-cn:别灰心，换一种说法！|en:Don’t worry—try a different approach!", currentLanguage)}
-              </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <Link to="/learn" className="px-5 py-2 rounded-full bg-gray-100 hover:bg-gray-200">
-                  ← {t("zh-tw:回到分類|zh-cn:回到分类|en:Back to Categories", currentLanguage)}
-                </Link>
-                <button onClick={() => setPhase("intro")} className="px-5 py-2 rounded-full text-white bg-indigo-500 hover:bg-indigo-600">
-                  {t("zh-tw:重新開始|zh-cn:重新开始|en:Restart", currentLanguage)}
-                </button>
-              </div>
-            </div>
-          )}
+        <textarea
+          value={noteContent}
+          onChange={(e) => setNoteContent(e.target.value)}
+          placeholder={t({ 'zh-tw': '寫下你想對她/他說的話...', 'zh-cn': '写下你想对她/他说的话...', 'en': 'Write what you want to say to her/him...' })}
+          disabled={!gameActive}
+          style={minigameStyles.textarea}
+        />
+        <div style={minigameStyles.noteStats}>
+          <span style={{ color: noteContent.length < 15 ? '#f44336' : noteContent.length > 60 ? '#ff9800' : '#4caf50' }}>
+            {t({ 'zh-tw': '字數', 'zh-cn': '字数', 'en': 'Characters' })}: {noteContent.length}/60
+          </span>
         </div>
+        <button
+          onClick={handleSubmit}
+          disabled={!gameActive || noteContent.length === 0}
+          style={minigameStyles.submitButton}
+        >
+          {t({ 'zh-tw': '📝 偷偷傳紙條', 'zh-cn': '📝 偷偷传纸条', 'en': '📝 Pass Note Secretly' })}
+        </button>
+      </div>
+    );
+  };
 
-        {/* Footer help card (TW flavor + learning aid) */}
-        <div className="mt-6 text-xs text-gray-600 leading-relaxed">
-          <div className="bg-white/70 border border-pink-100 rounded-2xl p-4 shadow">
-            <div className="font-semibold mb-1">
-              {t("zh-tw:學習小幫手：|zh-cn:学习小帮手：|en:Learning helper:", currentLanguage)}
-            </div>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>{t("zh-tw:台灣口語常用語氣詞：啦／嘛／欸／喔。|zh-cn:台湾口语常用语气词：啦/嘛/欸/喔。|en:Taiwanese particles to sound natural: 啦, 嘛, 欸, 喔.", currentLanguage)}</li>
-              <li>{t("zh-tw:告白語氣避免太命令；多用『其實、老實說、我覺得』。|zh-cn:告白语气避免命令，多用缓冲词。|en:Avoid imperative tone; use softeners like “其實/老實說/我覺得”.", currentLanguage)}</li>
-              <li>{t("zh-tw:換同義說法也能加分：喜歡你→對你有好感／很在意你。|zh-cn:同义改写：喜欢你→对你有好感。|en:Paraphrasing helps: “like you” → “have feelings for you”.", currentLanguage)}</li>
-            </ul>
-          </div>
+  // Quiz Battle Minigame
+  const QuizBattleGame = () => {
+    const handleAnswer = (answerIndex) => {
+      const correct = answerIndex === currentQuiz.correct;
+      const points = correct ? 150 : 50;
+      setShowResult(true);
+
+      setTimeout(() => {
+        onComplete(correct, points, correct ?
+          t({ 'zh-tw': '她對你的知識感到佩服！', 'zh-cn': '她对你的知识感到佩服！', 'en': 'She\'s impressed by your knowledge!' }) :
+          t({ 'zh-tw': '她溫柔地搖搖頭，但還是微笑了', 'zh-cn': '她温柔地摇摇头，但还是微笑了', 'en': 'She shakes her head gently but still smiles' })
+        );
+      }, 1500);
+    };
+
+    if (!currentQuiz) return <div>Loading...</div>;
+
+    return (
+      <div style={minigameStyles.container}>
+        <h3>{t({ 'zh-tw': '📚 知識問答挑戰', 'zh-cn': '📚 知识问答挑战', 'en': '📚 Knowledge Quiz Challenge' })}</h3>
+        <div style={minigameStyles.question}>
+          {t(currentQuiz.question)}
+        </div>
+        <div style={minigameStyles.quizOptions}>
+          {currentQuiz.options.map((option, index) => (
+            <button
+              key={index}
+              onClick={() => handleAnswer(index)}
+              disabled={!gameActive || showResult}
+              style={minigameStyles.quizOption}
+            >
+              {String.fromCharCode(65 + index)}. {t(option)}
+            </button>
+          ))}
         </div>
       </div>
+    );
+  };
+
+  // Voice Chat Minigame
+  const VoiceChatGame = () => {
+    const handleSendMessage = () => {
+      if (!userInput.trim()) return;
+
+      const newMessage = {
+        id: Date.now(),
+        sender: 'player',
+        content: userInput,
+        isVoice: false,
+        timestamp: new Date()
+      };
+
+      setChatHistory(prev => [...prev, newMessage]);
+
+      // Simulate AI response
+      setTimeout(() => {
+        const aiResponse = {
+          id: Date.now() + 1,
+          sender: 'crush',
+          content: generateAIResponse(userInput),
+          timestamp: new Date()
+        };
+        setChatHistory(prev => [...prev, aiResponse]);
+      }, 1000);
+
+      const messageValue = userInput;
+      setUserInput('');
+
+      // Success based on message quality and length
+      const hasQuestion = messageValue.includes('?') || messageValue.includes('嗎') || messageValue.includes('吗');
+      const goodLength = messageValue.length > 10 && messageValue.length < 100;
+      const success = hasQuestion && goodLength;
+
+      setTimeout(() => {
+        onComplete(success, success ? 120 : 80, success ?
+          t({ 'zh-tw': '對話很愉快，你們越聊越投機！', 'zh-cn': '对话很愉快，你们越聊越投机！', 'en': 'Great conversation, you\'re getting along well!' }) :
+          t({ 'zh-tw': '對話還不錯，但還能更好', 'zh-cn': '对话还不错，但还能更好', 'en': 'The conversation was okay, but could be better' })
+        );
+      }, 3000);
+    };
+
+    return (
+      <div style={minigameStyles.container}>
+        <h3>{t({ 'zh-tw': '💬 對話時間', 'zh-cn': '💬 对话时间', 'en': '💬 Chat Time' })}</h3>
+        <div style={minigameStyles.chatHistory}>
+          {chatHistory.slice(-6).map(message => (
+            <div key={message.id} style={{
+              ...minigameStyles.message,
+              ...(message.sender === 'player' ? minigameStyles.playerMessage : minigameStyles.crushMessage)
+            }}>
+              <div style={minigameStyles.messageContent}>
+                {message.isVoice && <Mic style={minigameStyles.voiceIcon} />}
+                {message.content}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={minigameStyles.chatInputContainer}>
+          <input
+            type="text"
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            placeholder={t({ 'zh-tw': '說些什麼... (試著問問題！)', 'zh-cn': '说些什么... (试着问问题！)', 'en': 'Say something... (Try asking questions!)' })}
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            disabled={!gameActive}
+            style={minigameStyles.chatInput}
+          />
+          <button
+            onClick={startVoiceInput}
+            disabled={!gameActive || isRecording}
+            style={{ ...minigameStyles.voiceButton, backgroundColor: isRecording ? '#ff5722' : '#2196f3' }}
+          >
+            {isRecording ? <MicOff size={16} /> : <Mic size={16} />}
+          </button>
+          <button
+            onClick={handleSendMessage}
+            disabled={!gameActive || !userInput.trim()}
+            style={minigameStyles.sendButton}
+          >
+            {t({ 'zh-tw': '發送', 'zh-cn': '发送', 'en': 'Send' })}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Festival Activities Minigame
+  const FestivalActivitiesGame = () => {
+    const activities = [
+      {
+        name: { 'zh-tw': '一起逛攤位', 'zh-cn': '一起逛摊位', 'en': 'Browse Stalls Together' },
+        success: 70,
+        points: 80
+      },
+      {
+        name: { 'zh-tw': '邀請吃章魚燒', 'zh-cn': '邀请吃章鱼烧', 'en': 'Invite to Eat Takoyaki' },
+        success: 80,
+        points: 120
+      },
+      {
+        name: { 'zh-tw': '一起玩遊戲攤', 'zh-cn': '一起玩游戏摊', 'en': 'Play Games Together' },
+        success: 60,
+        points: 100
+      }
+    ];
+
+    const handleActivity = (activity) => {
+      const success = Math.random() * 100 < activity.success;
+      onComplete(success, activity.points, success ?
+        t({ 'zh-tw': `${t(activity.name)}很成功！她看起來很開心`, 'zh-cn': `${t(activity.name)}很成功！她看起来很开心`, 'en': `${t(activity.name)} was successful! She looks happy` }) :
+        t({ 'zh-tw': '有點尷尬，但她還是很友善', 'zh-cn': '有点尴尬，但她还是很友善', 'en': 'A bit awkward, but she\'s still friendly' })
+      );
+    };
+
+    return (
+      <div style={minigameStyles.container}>
+        <h3>{t({ 'zh-tw': '🎪 選擇校慶活動', 'zh-cn': '🎪 选择校庆活动', 'en': '🎪 Choose Festival Activity' })}</h3>
+        <div style={minigameStyles.activitiesContainer}>
+          {activities.map((activity, index) => (
+            <button
+              key={index}
+              onClick={() => handleActivity(activity)}
+              disabled={!gameActive}
+              style={minigameStyles.activityButton}
+            >
+              <div>{t(activity.name)}</div>
+              <div style={minigameStyles.activityChance}>
+                {t({ 'zh-tw': '成功率', 'zh-cn': '成功率', 'en': 'Success Rate' })}: {activity.success}%
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render based on current minigame
+  switch (currentMinigame) {
+    case 'note_writing':
+      return <NoteWritingGame />;
+    case 'quiz_battle':
+      return <QuizBattleGame />;
+    case 'voice_chat':
+      return <VoiceChatGame />;
+    case 'festival_activities':
+      return <FestivalActivitiesGame />;
+    default:
+      return <div>Minigame not found</div>;
+  }
+};
+
+// === MAIN GAME COMPONENT ===
+const EnhancedRomanceGame = () => {
+  // === Game State Management ===
+  const [currentLanguage, setCurrentLanguage] = useState('zh-tw');
+  const [gamePhase, setGamePhase] = useState('intro');
+  const [selectedCharacter, setSelectedCharacter] = useState(null);
+  const [crushAffection, setCrushAffection] = useState(50);
+  const [playerScore, setPlayerScore] = useState(0);
+  const [currentScenario, setCurrentScenario] = useState(0);
+  const [currentMinigame, setCurrentMinigame] = useState(null);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [userInput, setUserInput] = useState('');
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [gameStats, setGameStats] = useState({
+    correctAnswers: 0,
+    totalQuestions: 0,
+    notesExchanged: 0,
+    teacherTroubles: 0,
+    scenariosCompleted: 0
+  });
+  const [messageBox, setMessageBox] = useState({
+    isVisible: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+
+  // === Refs ===
+  const timerRef = useRef(null);
+
+  // === Game Data ===
+  const characters = {
+    male: {
+      name: { 'zh-tw': '柯景騰', 'zh-cn': '柯景腾', 'en': 'Ko Ching-teng' },
+      description: { 'zh-tw': '調皮但溫柔的男生', 'zh-cn': '调皮但温柔的男生', 'en': 'Mischievous but gentle boy' },
+      emoji: '🤓',
+      personality: { 'zh-tw': '幽默、直率、有點笨拙但很真誠', 'zh-cn': '幽默、直率、有点笨拙但很真诚', 'en': 'Humorous, straightforward, a bit clumsy but sincere' }
+    },
+    female: {
+      name: { 'zh-tw': '沈佳宜', 'zh-cn': '沈佳宜', 'en': 'Shen Chia-yi' },
+      description: { 'zh-tw': '班上的模範生', 'zh-cn': '班上的模范生', 'en': 'Class model student' },
+      emoji: '📚',
+      personality: { 'zh-tw': '聰明、認真、有點害羞但很溫柔', 'zh-cn': '聪明、认真、有点害羞但很温柔', 'en': 'Smart, serious, a bit shy but very gentle' }
+    }
+  };
+
+  const scenarios = [
+    {
+      id: 'note_passing',
+      title: { 'zh-tw': '課堂傳紙條', 'zh-cn': '课堂传纸条', 'en': 'Passing Notes in Class' },
+      description: { 'zh-tw': '在數學課上偷偷傳紙條...', 'zh-cn': '在数学课上偷偷传纸条...', 'en': 'Secretly passing notes in math class...' },
+      background: {
+        'zh-tw': '下午的數學課，陽光透過窗戶灑進教室。老師在黑板上寫著複雜的方程式，而你的心思卻完全不在數學上。坐在前排的她專心做筆記，你想要引起她的注意...',
+        'zh-cn': '下午的数学课，阳光透过窗户洒进教室。老师在黑板上写着复杂的方程式，而你的心思却完全不在数学上。坐在前排的她专心做笔记，你想要引起她的注意...',
+        'en': 'During afternoon math class, sunlight streams through the windows. The teacher writes complex equations on the blackboard, but your mind is not on math at all. She sits in the front row, taking notes seriously, and you want to get her attention...'
+      },
+      timeLimit: 45,
+      minigames: ['note_writing', 'voice_chat'],
+      objective: { 'zh-tw': '目標：成功傳遞紙條並開始對話', 'zh-cn': '目标：成功传递纸条并开始对话', 'en': 'Objective: Successfully pass a note and start a conversation' }
+    },
+    {
+      id: 'library_study',
+      title: { 'zh-tw': '圖書館唸書', 'zh-cn': '图书馆念书', 'en': 'Library Study Session' },
+      description: { 'zh-tw': '期中考前的圖書館約會...', 'zh-cn': '期中考前的图书馆约会...', 'en': 'Library date before midterm exams...' },
+      background: {
+        'zh-tw': '期中考前一週，圖書館裡人潮洶湧。你們約好一起來複習，她帶了一堆參考書，而你...其實只是想多看她幾眼。安靜的環境讓每個小動作都顯得特別明顯。',
+        'zh-cn': '期中考前一周，图书馆里人潮汹涌。你们约好一起来复习，她带了一堆参考书，而你...其实只是想多看她几眼。安静的环境让每个小动作都显得特别明显。',
+        'en': 'A week before midterms, the library is packed. You agreed to study together. She brought a stack of reference books, and you... well, you just wanted to see her more. In this quiet environment, every little action feels especially noticeable.'
+      },
+      timeLimit: 60,
+      minigames: ['quiz_battle'],
+      objective: { 'zh-tw': '目標：在問答挑戰中取得好成績', 'zh-cn': '目标：在问答挑战中取得好成绩', 'en': 'Objective: Do well in the quiz challenge' }
+    },
+    {
+      id: 'school_festival',
+      title: { 'zh-tw': '校慶園遊會', 'zh-cn': '校庆园游会', 'en': 'School Festival' },
+      description: { 'zh-tw': '熱鬧的校慶日，難得的單獨相處時間', 'zh-cn': '热闹的校庆日，难得的单独相处时间', 'en': 'A lively school festival, rare alone time' },
+      background: {
+        'zh-tw': '今天是學校的園遊會，整個校園充滿了歡樂的氣氛。你們一起逛著攤位，耳邊傳來陣陣歡笑聲和廣播。這是個展現你魅力，讓你們感情升溫的好機會！',
+        'zh-cn': '今天是学校的园游会，整个校园充满了欢乐的气氛。你们一起逛着摊位，耳边传来阵阵欢笑声和广播。这是个展现你魅力，让你们感情升温的好机会！',
+        'en': 'It\'s the school festival today, and the campus is filled with a festive atmosphere. You are walking through the stalls together, surrounded by laughter and announcements. This is a great chance to show your charm and let your relationship heat up!'
+      },
+      timeLimit: 75,
+      minigames: ['festival_activities', 'voice_chat'],
+      objective: { 'zh-tw': '目標：和她一起完成活動，增加好感度', 'zh-cn': '目标：和她一起完成活动，增加好感度', 'en': 'Objective: Complete activities with her to increase affection' }
+    }
+  ];
+
+  // === Translation Helper Function ===
+  const t = (textObject) => {
+    return textObject[currentLanguage] || textObject.en;
+  };
+
+  // === Timers and Game Flow ===
+  useEffect(() => {
+    if (gameActive && timeLeft > 0) {
+      timerRef.current = setTimeout(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && gameActive) {
+      handleMinigameComplete(false, 0, t({
+        'zh-tw': '時間到了，機會溜走了...',
+        'zh-cn': '时间到了，机会溜走了...',
+        'en': 'Time is up, the opportunity slipped away...'
+      }));
+    }
+    return () => clearTimeout(timerRef.current);
+  }, [gameActive, timeLeft]);
+
+  // === Game Functions ===
+  const handleCharacterSelect = (gender) => {
+    setSelectedCharacter(characters[gender]);
+    setGamePhase('story');
+    setGameStats(prev => ({ ...prev, scenariosCompleted: 0 }));
+    setCrushAffection(50);
+    setPlayerScore(0);
+    setCurrentScenario(0);
+  };
+
+  const startNextScenario = () => {
+    if (currentScenario < scenarios.length) {
+      const scenario = scenarios[currentScenario];
+      setGamePhase('scenario_start');
+      setCurrentMinigame(null);
+      setGameActive(false);
+      setTimeLeft(scenario.timeLimit);
+    } else {
+      setGamePhase('end');
+    }
+  };
+
+  const startGameRound = () => {
+    setGamePhase('minigame');
+    const scenario = scenarios[currentScenario];
+    const randomMinigame = scenario.minigames[Math.floor(Math.random() * scenario.minigames.length)];
+    setCurrentMinigame(randomMinigame);
+    setGameActive(true);
+    setMessageBox({ isVisible: false, message: '' });
+  };
+
+  const handleMinigameComplete = (success, points, message) => {
+    setGameActive(false);
+    clearTimeout(timerRef.current);
+
+    const scoreGain = success ? points : 0;
+    const affectionChange = success ? points / 10 : -points / 20;
+
+    setPlayerScore(prev => prev + scoreGain);
+    setCrushAffection(prev => Math.max(0, Math.min(100, prev + affectionChange)));
+    setGameStats(prev => ({ ...prev, scenariosCompleted: prev.scenariosCompleted + 1 }));
+
+    setMessageBox({
+      isVisible: true,
+      title: success ? t({ 'zh-tw': '成功！', 'zh-cn': '成功！', 'en': 'Success!' }) : t({ 'zh-tw': '失敗...', 'zh-cn': '失败...', 'en': 'Failed...' }),
+      message: message,
+      type: success ? 'success' : 'error'
+    });
+  };
+
+  const handleMessageBoxClose = () => {
+    setMessageBox({ isVisible: false, message: '' });
+    if (crushAffection >= 80) {
+      setGamePhase('victory');
+    } else if (crushAffection <= 20) {
+      setGamePhase('defeat');
+    } else {
+      setCurrentScenario(prev => prev + 1);
+      startNextScenario();
+    }
+  };
+
+  // === JSX Rendering ===
+  const renderGameContent = () => {
+    switch (gamePhase) {
+      case 'intro':
+        return (
+          <div style={containerStyle}>
+            <h2>{t({ 'zh-tw': '選擇你的校園偶像', 'zh-cn': '选择你的校园偶像', 'en': 'Choose Your Campus Idol' })}</h2>
+            <div style={flexContainerStyle}>
+              <div style={characterCardStyle} onClick={() => handleCharacterSelect('female')}>
+                <span style={emojiStyle}>{characters.female.emoji}</span>
+                <h3>{t(characters.female.name)}</h3>
+                <p>{t(characters.female.description)}</p>
+              </div>
+              <div style={characterCardStyle} onClick={() => handleCharacterSelect('male')}>
+                <span style={emojiStyle}>{characters.male.emoji}</span>
+                <h3>{t(characters.male.name)}</h3>
+                <p>{t(characters.male.description)}</p>
+              </div>
+            </div>
+            <div style={languageSelectorStyle}>
+              <button style={languageButtonStyle} onClick={() => setCurrentLanguage('zh-tw')}>繁體中文</button>
+              <button style={languageButtonStyle} onClick={() => setCurrentLanguage('zh-cn')}>简体中文</button>
+              <button style={languageButtonStyle} onClick={() => setCurrentLanguage('en')}>English</button>
+            </div>
+          </div>
+        );
+
+      case 'story':
+        const currentStoryScenario = scenarios[currentScenario];
+        if (!currentStoryScenario) return <div>{t({ 'zh-tw': '遊戲結束', 'zh-cn': '游戏结束', 'en': 'Game Over' })}</div>;
+        return (
+          <div style={containerStyle}>
+            <h2>{t(currentStoryScenario.title)}</h2>
+            <div style={storyPanelStyle}>
+              <p>{t(currentStoryScenario.background)}</p>
+              <p style={{ marginTop: '20px', fontWeight: 'bold' }}>{t(currentStoryScenario.objective)}</p>
+            </div>
+            <button style={actionButtonStyle} onClick={startGameRound}>
+              {t({ 'zh-tw': '開始行動', 'zh-cn': '开始行动', 'en': 'Start Action' })}
+            </button>
+          </div>
+        );
+
+      case 'minigame':
+        const scenario = scenarios[currentScenario];
+        return (
+          <div style={containerStyle}>
+            <div style={headerStyle}>
+              <div style={statItemStyle}>
+                <Clock size={16} style={{ verticalAlign: 'middle' }} /> {t({ 'zh-tw': '剩餘時間', 'zh-cn': '剩余时间', 'en': 'Time Left' })}: {timeLeft}s
+              </div>
+              <div style={statItemStyle}>
+                <Star size={16} style={{ verticalAlign: 'middle' }} /> {t({ 'zh-tw': '好感度', 'zh-cn': '好感度', 'en': 'Affection' })}: {crushAffection}
+              </div>
+            </div>
+            <GameMinigames
+              gameActive={gameActive}
+              timeLeft={timeLeft}
+              currentLanguage={currentLanguage}
+              t={t}
+              userInput={userInput}
+              setUserInput={setUserInput}
+              isRecording={isRecording}
+              setIsRecording={setIsRecording}
+              chatHistory={chatHistory}
+              setChatHistory={setChatHistory}
+              gameStats={gameStats}
+              setGameStats={setGameStats}
+              onComplete={handleMinigameComplete}
+              currentMinigame={currentMinigame}
+              selectedCharacter={selectedCharacter}
+              characters={characters}
+            />
+          </div>
+        );
+
+      case 'victory':
+        return (
+          <div style={containerStyle}>
+            <div style={resultPanelStyle}>
+              <span style={emojiStyle}>💖</span>
+              <h2>{t({ 'zh-tw': '恭喜！你們的關係更進一步！', 'zh-cn': '恭喜！你们的关系更进一步！', 'en': 'Congratulations! Your relationship has progressed!' })}</h2>
+              <p>{t({ 'zh-tw': '你們的努力得到了回報。好感度達到了80分！', 'zh-cn': '你们的努力得到了回报。好感度达到了80分！', 'en': 'Your efforts have paid off. Affection reached 80!' })}</p>
+              <button style={actionButtonStyle} onClick={() => setGamePhase('end')}>
+                {t({ 'zh-tw': '繼續下一天', 'zh-cn': '继续下一天', 'en': 'Continue to the next day' })}
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'defeat':
+        return (
+          <div style={containerStyle}>
+            <div style={resultPanelStyle}>
+              <span style={emojiStyle}>💔</span>
+              <h2>{t({ 'zh-tw': '遺憾，你們的關係有些疏遠了...', 'zh-cn': '遗憾，你们的关系有些疏远了...', 'en': 'Unfortunately, your relationship has become distant...' })}</h2>
+              <p>{t({ 'zh-tw': '好感度下降到20分。你需要更小心地應對。', 'zh-cn': '好感度下降到20分。你需要更小心地应对。', 'en': 'Affection dropped to 20. You need to be more careful.' })}</p>
+              <button style={actionButtonStyle} onClick={() => setGamePhase('end')}>
+                {t({ 'zh-tw': '結束這段故事', 'zh-cn': '结束这段故事', 'en': 'End this story' })}
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'end':
+        return (
+          <div style={containerStyle}>
+            <div style={resultPanelStyle}>
+              <h2>{t({ 'zh-tw': '故事完結', 'zh-cn': '故事完结', 'en': 'Story Concluded' })}</h2>
+              <p style={{ marginTop: '20px' }}>
+                {t({ 'zh-tw': '你與', 'zh-cn': '你与', 'en': 'Your journey with ' })}
+                <span style={{ color: '#e91e63', fontWeight: 'bold' }}>{t(selectedCharacter.name)}</span>
+                {t({ 'zh-tw': '的故事告一段落。', 'zh-cn': '的故事告一段落。', 'en': ' has come to an end.' })}
+              </p>
+              <div style={finalStatsStyle}>
+                <div style={statItemStyle}><Heart size={16} /> {t({ 'zh-tw': '最終好感度', 'zh-cn': '最终好感度', 'en': 'Final Affection' })}: {crushAffection}</div>
+                <div style={statItemStyle}><Star size={16} /> {t({ 'zh-tw': '最終分數', 'zh-cn': '最终分数', 'en': 'Final Score' })}: {playerScore}</div>
+                <div style={statItemStyle}><BookOpen size={16} /> {t({ 'zh-tw': '完成場景', 'zh-cn': '完成场景', 'en': 'Scenarios Completed' })}: {gameStats.scenariosCompleted}/{scenarios.length}</div>
+              </div>
+              <button style={actionButtonStyle} onClick={() => setGamePhase('intro')}>
+                {t({ 'zh-tw': '重新開始', 'zh-cn': '重新开始', 'en': 'Restart' })}
+              </button>
+            </div>
+          </div>
+        );
+
+      default:
+        return <div>{t({ 'zh-tw': '加載中...', 'zh-cn': '加载中...', 'en': 'Loading...' })}</div>;
+    }
+  };
+
+  return (
+    <div style={appContainerStyle}>
+      {renderGameContent()}
+
+      {/* Message Box */}
+      {messageBox.isVisible && (
+        <div style={messageBoxOverlayStyle}>
+          <div style={messageBoxContentStyle}>
+            <span style={messageBoxIconStyle}>{messageBox.type === 'success' ? '✅' : '❌'}</span>
+            <h3>{messageBox.title}</h3>
+            <p>{messageBox.message}</p>
+            <button style={closeButton} onClick={handleMessageBoxClose}>
+              {t({ 'zh-tw': '確定', 'zh-cn': '确定', 'en': 'OK' })}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+// === STYLES ===
+const appContainerStyle = {
+  fontFamily: 'Arial, sans-serif',
+  textAlign: 'center',
+  backgroundColor: '#f0f4f8',
+  minHeight: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'center',
+  color: '#333'
+};
+
+const containerStyle = {
+  maxWidth: '800px',
+  width: '90%',
+  padding: '40px',
+  backgroundColor: 'white',
+  borderRadius: '20px',
+  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+  margin: '20px'
+};
+
+const headerStyle = {
+  display: 'flex',
+  justifyContent: 'space-around',
+  marginBottom: '20px',
+  fontSize: '1.2rem',
+  color: '#555'
+};
+
+const statItemStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px'
+};
+
+const flexContainerStyle = {
+  display: 'flex',
+  justifyContent: 'center',
+  gap: '20px',
+  marginTop: '30px'
+};
+
+const characterCardStyle = {
+  padding: '30px',
+  border: '2px solid #e91e63',
+  borderRadius: '15px',
+  cursor: 'pointer',
+  transition: 'transform 0.3s, box-shadow 0.3s',
+  '&:hover': {
+    transform: 'scale(1.05)',
+    boxShadow: '0 8px 20px rgba(233, 30, 99, 0.2)'
+  }
+};
+
+const emojiStyle = {
+  fontSize: '3rem',
+  marginBottom: '10px'
+};
+
+const languageSelectorStyle = {
+  marginTop: '30px'
+};
+
+const languageButtonStyle = {
+  background: '#e0e0e0',
+  border: 'none',
+  padding: '8px 15px',
+  margin: '0 5px',
+  borderRadius: '20px',
+  cursor: 'pointer',
+  fontWeight: 'bold',
+  transition: 'background 0.3s',
+  '&:hover': {
+    background: '#d0d0d0'
+  }
+};
+
+const actionButtonStyle = {
+  background: '#e91e63',
+  color: 'white',
+  border: 'none',
+  padding: '15px 30px',
+  borderRadius: '25px',
+  fontSize: '1rem',
+  fontWeight: 'bold',
+  cursor: 'pointer',
+  marginTop: '30px',
+  boxShadow: '0 4px 15px rgba(233, 30, 99, 0.3)',
+  transition: 'transform 0.3s, box-shadow 0.3s'
+};
+
+const storyPanelStyle = {
+  background: '#f8f9fa',
+  padding: '25px',
+  borderRadius: '15px',
+  textAlign: 'left',
+  lineHeight: '1.6'
+};
+
+const resultPanelStyle = {
+  padding: '30px',
+  backgroundColor: '#f8f9fa',
+  borderRadius: '20px',
+  boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
+};
+
+const finalStatsStyle = {
+  marginTop: '25px',
+  display: 'grid',
+  gap: '10px',
+  textAlign: 'left'
+};
+
+const messageBoxOverlayStyle = {
+  position: 'fixed',
+  top: '0',
+  left: '0',
+  width: '100%',
+  height: '100%',
+  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: '1000'
+};
+
+const messageBoxContentStyle = {
+  background: 'white',
+  padding: '40px',
+  borderRadius: '15px',
+  textAlign: 'center',
+  maxWidth: '400px',
+  boxShadow: '0 5px 25px rgba(0, 0, 0, 0.2)'
+};
+
+const messageBoxIconStyle = {
+  fontSize: '3rem',
+  marginBottom: '15px'
+};
+
+const closeButton = {
+  background: '#e91e63',
+  color: 'white',
+  border: 'none',
+  padding: '10px 20px',
+  borderRadius: '20px',
+  marginTop: '20px',
+  cursor: 'pointer'
+};
+
+export default EnhancedRomanceGame;

@@ -89,22 +89,12 @@ export default function Footer({ currentLanguage }) {
                 社群連結
               </span>
             </h4>
-            <a href="#">
-              <span data-text="zh-tw:搶先體驗 Beta|zh-cn:抢先体验 Beta|en:Beta Access">
-                搶先體驗 Beta
-              </span>
-            </a>
-            <a href="#">
-              <span data-text="zh-tw:Discord 學習社群|zh-cn:Discord 学习社群|en:Discord Community">
-                Discord 學習社群
-              </span>
-            </a>
             <Link to="/contact">
               <span data-text="zh-tw:意見回饋|zh-cn:意见反馈|en:Feedback">
                 意見回饋
               </span>
             </Link>
-            <a href="#">
+            <a href="https://www.youtube.com/@YouYong%E8%AF%B4">
               <span data-text="zh-tw:YouTube 頻道|zh-cn:YouTube 频道|en:YouTube Channel">
                 YouTube 頻道
               </span>

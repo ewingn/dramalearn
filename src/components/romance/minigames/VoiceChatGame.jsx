@@ -1,8 +1,7 @@
 // src/components/romance/minigames/VoiceChatGame.jsx
 import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
-import { minigameStyles } from '../styles/gameStyles.js';
-import { aiResponseTemplates } from '../data/gameData.js';
+import { minigameStyles } from '../data/gameStyles.js';
 
 const VoiceChatGame = ({
   gameActive,

@@ -251,7 +251,8 @@ export default function ContactPage() {
               </p>
               <p>
                 <strong data-text="zh-tw:合作信箱：|zh-cn:合作邮箱：|en:Partnership:">合作信箱：</strong>
-                <span style={{ color: '#667eea' }}>partnership@dramalearn.tw</span>
+                <span style={{ color: '#667eea' }}>youyong189@gmail.com
+</span>
               </p>
             </div>
 
@@ -282,7 +283,8 @@ export default function ContactPage() {
               </p>
               <p>
                 <strong data-text="zh-tw:建議信箱：|zh-cn:建议邮箱：|en:Feedback:">建議信箱：</strong>
-                <span style={{ color: '#667eea' }}>feedback@dramalearn.tw</span>
+                <span style={{ color: '#667eea' }}>youyong189@gmail.com
+</span>
               </p>
             </div>
 

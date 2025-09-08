@@ -58,8 +58,8 @@ export default function AboutPage() {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent'
               }}>
-                <span data-text="zh-tw:那些年的電視時光|zh-cn:那些年的电视时光|en:Those TV Days">
-                  那些年的電視時光
+                <span data-text="zh-tw:追劇的意外收穫|zh-cn:追剧的意外收获|en:Unexpected Drama Benefits">
+                  追劇的意外收穫
                 </span>
               </h3>
               <p style={{
@@ -68,8 +68,8 @@ export default function AboutPage() {
                 color: '#666',
                 marginBottom: '20px'
               }}>
-                <span data-text="zh-tw:記得小時候最期待的就是晚上八點的八點檔。從《流星花園》開始，道明寺那句「如果道歉有用的話，要警察幹嘛」成了全台灣女生的夢中情話。|zh-cn:记得小时候最期待的就是晚上八点的八点档。从《流星花园》开始，道明寺那句「如果道歉有用的话，要警察干嘛」成了全台湾女生的梦中情话。|en:I remember as a kid, the most anticipated moment was the 8pm prime time drama. Starting with Meteor Garden, Dao Ming Si's 'If apologizing worked, what would we need police for?' became every Taiwanese girl's dream pickup line.">
-                  記得小時候最期待的就是晚上八點的八點檔。從《流星花園》開始，道明寺那句「如果道歉有用的話，要警察幹嘛」成了全台灣女生的夢中情話。
+                <span data-text="zh-tw:當我開始學習中文時，台劇成了我最好的老師。時至今日，看劇依然是我精進中文能力的絕佳方式。偷偷說，我從小就夢想能成為台劇演員，但一直沒有勇氣去追尋。我會模仿劇中角色的語氣和台詞，幻想自己也身在其中，哪怕只是個外國人角色，也甘之如飴。|zh-cn:当我开始学习中文时，台剧成了我最好的老师。时至今日，看剧依然是我精进中文能力的绝佳方式。偷偷说，我从小就梦想能成为台剧演员，但一直没有勇气去追寻。我模仿剧中角色的语气和台词，幻想自己也身在其中，哪怕只是个外国人角色，也甘之如饴。|en:When I first started learning Chinese, dramas became my best teacher. Even now, watching dramas is a great way to hone my skills. I secretly wanted to be an actor in Taiwanese and Chinese TV shows, but never had the courage to pursue that dream. I would mimic the characters' sayings and imagine myself in those roles... or at least a role for a white foreigner, haha.">
+                  當我開始學習中文時，台劇成了我最好的老師。時至今日，看劇依然是我精進中文能力的絕佳方式。偷偷說，我從小就夢想能成為台劇演員，但一直沒有勇氣去追尋。我會模仿劇中角色的語氣和台詞，幻想自己也身在其中，哪怕只是個外國人角色，也甘之如飴。
                 </span>
               </p>
               <p style={{
@@ -78,8 +78,8 @@ export default function AboutPage() {
                 color: '#666',
                 marginBottom: '20px'
               }}>
-                <span data-text="zh-tw:後來有了《惡作劇之吻》，湘琴的傻氣和直樹的高冷，讓我們相信愛情真的可以很單純。再到《想見你》讓全世界都在討論平行時空，台劇真的越來越厲害了。|zh-cn:后来有了《恶作剧之吻》，湘琴的傻气和直树的高冷，让我们相信爱情真的可以很单纯。再到《想见你》让全世界都在讨论平行时空，台剧真的越来越厉害了。|en:Then came It Started with a Kiss - Xiang Qin's silliness and Naoki's aloofness made us believe love could really be that simple. And when Someday or One Day got the whole world discussing parallel universes, Taiwanese dramas really leveled up.">
-                  後來有了《惡作劇之吻》，湘琴的傻氣和直樹的高冷，讓我們相信愛情真的可以很單純。再到《想見你》讓全世界都在討論平行時空，台劇真的越來越厲害了。
+                <span data-text="zh-tw:身為一個住在美國的人，台劇是連結台灣文化與社群的絕佳橋樑。透過這些戲劇，我能與有共同興趣的朋友們交流，分享追劇的喜悅。|zh-cn:身为一个住在美国的人，台剧是连结台湾文化与社群的绝佳桥梁。透过这些戏剧，我能与有共同兴趣的朋友们交流，分享追剧的喜悦。|en:As someone living in the States, TV dramas are a great way to connect with the culture and meet like-minded individuals. Through these shows, I can communicate with friends who share the same interests and share the joy of watching dramas.">
+                  身為一個住在美國的人，台劇是連結台灣文化與社群的絕佳橋樑。透過這些戲劇，我能與有共同興趣的朋友們交流，分享追劇的喜悅。
                 </span>
               </p>
             </div>

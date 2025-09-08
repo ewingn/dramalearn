@@ -1,10 +1,11 @@
 // gameData.js - All static game data
 
+// --- CHARACTERS ---
 export const characters = {
   male: {
     name: {
       'zh-tw': '柯景騰',
-      'zh-cn': '柯景腾', 
+      'zh-cn': '柯景腾',
       'en': 'Ko Ching-teng'
     },
     description: {
@@ -39,6 +40,21 @@ export const characters = {
   }
 };
 
+// --- SCRIPTED CONVERSATIONS ---
+export const scriptedScenes = [
+  {
+    id: 'classroom_confession',
+    script: [
+      { speaker: 'ai', text: { 'zh-tw': '你...你找我有什麼事嗎？', 'zh-cn': '你...你找我有什么事吗？', 'en': 'Did you... did you want to talk about something?' } },
+      { speaker: 'player', text: { 'zh-tw': '「因為」我喜歡你，所以我特別想跟你說這句話', 'zh-cn': '「因为」我喜欢你，所以我特别想跟你说这句话', 'en': 'Because I like you, I really wanted to say this to you.' }, targetPhrase: { 'zh-tw': '因為...所以...', 'zh-cn': '因为...所以...', 'en': 'Because... therefore...' } },
+      { speaker: 'ai', text: { 'zh-tw': '......', 'zh-cn': '......', 'en': '......' } },
+      { speaker: 'player', text: { 'zh-tw': '我「其實」一直很喜歡你', 'zh-cn': '我「其实」一直很喜欢你', 'en': 'Actually, I’ve always liked you.' }, targetPhrase: { 'zh-tw': '其實', 'zh-cn': '其实', 'en': 'Actually' } },
+      { speaker: 'ai', text: { 'zh-tw': '你...你幹嘛這樣說，我會害羞啦', 'zh-cn': '你...你干嘛这样说，我会害羞啦', 'en': 'Why... why do you say that, you\'re making me blush.' } },
+    ]
+  },
+];
+
+// --- SCENARIOS ---
 export const scenarios = [
   {
     id: 'note_passing',
@@ -59,7 +75,7 @@ export const scenarios = [
     },
     description: {
       'zh-tw': '老師在黑板上寫複雜的數學公式，你想趁機和心儀的人傳紙條...',
-      'zh-cn': '老师在黑板上写复杂的数学公式，你想趁机和心仪的人传纸条...',
+      'zh-cn': '老师在黑板上写复杂的数学公式，你想趁机和心儀的人傳紙條...',
       'en': 'The teacher is writing complex math formulas on the board, you want to pass a note to your crush...'
     },
     minigame: 'note_writing',
@@ -82,7 +98,7 @@ export const scenarios = [
     },
     background: {
       'zh-tw': '期中考將近，整個學校都瀰漫著緊張的氣氛。圖書館裡坐滿了認真讀書的學生。你鼓起勇氣邀請暗戀對象一起來圖書館讀書，這是一個絕佳的機會可以展現你的學識，也能夠更加了解對方。但同時也有壓力，如果回答錯誤可能會讓對方對你的印象打折扣。',
-      'zh-cn': '期中考将近，整个学校都弥漫着紧张的气氛。图书馆里坐满了认真读书的学生。你鼓起勇气邀请暗恋对象一起来图书馆读书，这是一个绝佳的机会可以展现你的学识，也能够更加了解对方。但同时也有压力，如果回答错误可能会让对方对你的印象打折扣。',
+      'zh-cn': '期中考将近，整个学校都弥漫着紧张的气氛。图书馆里坐满了认真读书的学生。你鼓起勇气邀请暗恋对象一起来图书馆读书，这是一个绝佳的机会可以展現你的學識，也能夠更加了解對方。但同時也有壓力，如果回答錯誤可能會讓對方對你的印象打折扣。',
       'en': 'Midterm exams are approaching, and the whole school is filled with tension. The library is packed with students studying hard. You gather courage to invite your crush to study together in the library. This is a perfect opportunity to show your knowledge and get to know them better. But there\'s pressure too - wrong answers might hurt their impression of you.'
     },
     description: {
@@ -90,7 +106,7 @@ export const scenarios = [
       'zh-cn': '期中考要到了，你鼓起勇气邀请暗恋对象一起读书...',
       'en': 'Midterm exams are coming, you gather courage to invite your crush to study together...'
     },
-    minigame: 'quiz_challenge',
+    minigame: 'connections_game',
     timeLimit: 45,
     riskLevel: 'low',
     affectionReward: 20,
@@ -110,7 +126,7 @@ export const scenarios = [
     },
     background: {
       'zh-tw': '夕陽西下，橘紅色的光芒透過窗戶灑進教室。同學們都已經離開，只剩下你們兩個人。這是電影中最經典的場景，也是表達心意的最佳時機。你的心跳加速，手心冒汗，這可能是改變一切的關鍵時刻。選擇正確的話語，用真誠打動對方的心。',
-      'zh-cn': '夕阳西下，橘红色的光芒透过窗户洒进教室。同学们都已经离开，只剩下你们两个人。这是电影中最经典的场景，也是表达心意的最佳时机。你的心跳加速，手心冒汗，这可能是改变一切的关键时刻。选择正确的话语，用真诚打动对方的心。',
+      'zh-cn': '夕阳西下，橘红色的光芒透过窗户洒进教室。同学们都已经离开，只剩下你们两个人。这是电影中最经典的场景，也是表达心意的最佳时机。你的心跳加速，手心冒汗，这可能是改变一切的关键时刻。选择正确的话语，用真誠打動對方的心。',
       'en': 'The sun is setting, casting orange-red light through the classroom windows. All classmates have left, only you two remain. This is the most classic scene from the movie and the perfect moment to express your feelings. Your heart races, palms sweat - this could be the moment that changes everything. Choose the right words and touch their heart with sincerity.'
     },
     description: {
@@ -118,7 +134,7 @@ export const scenarios = [
       'zh-cn': '夕阳西下，只剩你们两个人在教室里，这是表达心意的最佳时机...',
       'en': 'The sun is setting, only you two are left in the classroom, the perfect moment to express your feelings...'
     },
-    minigame: 'conversation',
+    minigame: 'scripted_chat',
     timeLimit: 60,
     riskLevel: 'high',
     affectionReward: 30,
@@ -138,15 +154,15 @@ export const scenarios = [
     },
     background: {
       'zh-tw': '一年一度的校園慶典到了！整個校園裝飾得五彩繽紛，到處都是歡樂的笑聲和熱鬧的攤位。空氣中瀰漫著烤香腸和爆米花的香味。這是一個輕鬆愉快的環境，最適合和心儀的人一起度過美好時光。你們可以一起玩遊戲、吃小食、聽音樂表演，在這種歡樂的氛圍中，感情很容易升溫。',
-      'zh-cn': '一年一度的校园庆典到了！整个校园装饰得五彩缤纷，到处都是欢乐的笑声和热闹的摊位。空气中弥漫着烤香肠和爆米花的香味。这是一个轻松愉快的环境，最适合和心仪的人一起度过美好时光。你们可以一起玩游戏、吃小食、听音乐表演，在这种欢乐的氛围中，感情很容易升温。',
+      'zh-cn': '一年一度的校园庆典到了！整个校园装饰得五彩缤纷，到处都是欢乐的笑声和热闹的摊位。空气中弥漫着烤香肠和爆米花的香味。这是一个轻松愉快的环境，最適合和心儀的人一起度過美好時光。你們可以一起玩遊戲、吃小食、聽音樂表演，在這種歡樂的氛圍中，感情很容易升溫。',
       'en': 'The annual school festival has arrived! The entire campus is decorated colorfully, filled with joyful laughter and lively stalls everywhere. The air is filled with the aroma of grilled sausages and popcorn. This is a relaxed and happy environment, perfect for spending quality time with your crush. You can play games together, eat snacks, and listen to music performances. In this joyful atmosphere, feelings can easily grow stronger.'
     },
     description: {
       'zh-tw': '學校舉辦園遊會，到處都是歡樂的氣氛，你想邀請心儀的人一起逛攤位...',
-      'zh-cn': '学校举办园游会，到处都是欢乐的气氛，你想邀请心仪的人一起逛摊位...',
+      'zh-cn': '学校举办园游会，到处都是欢乐的气氛，你想邀請心儀的人一起逛攤位...',
       'en': 'The school is holding a festival, there\'s a joyful atmosphere everywhere, you want to invite your crush to visit stalls together...'
     },
-    minigame: 'date_simulation',
+    minigame: 'festival_activities',
     timeLimit: 40,
     riskLevel: 'low',
     affectionReward: 25,
@@ -154,6 +170,7 @@ export const scenarios = [
   }
 ];
 
+// --- QUIZ QUESTIONS ---
 export const allQuizQuestions = [
   // Set 1: Taiwan Culture
   [
@@ -298,7 +315,7 @@ export const allQuizQuestions = [
   ]
 ];
 
-// AI Response templates
+// --- AI RESPONSE TEMPLATES ---
 export const aiResponseTemplates = {
   note_writing: [
     {
@@ -350,9 +367,9 @@ export const aiResponseTemplates = {
   ]
 };
 
-// Festival date activities
+// --- FESTIVAL ACTIVITIES ---
 export const festivalActivities = [
-  { 
+  {
     activity: {
       'zh-tw': '🎪 逛遊戲攤位',
       'zh-cn': '🎪 逛游戏摊位',

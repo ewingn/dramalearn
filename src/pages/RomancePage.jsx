@@ -1,579 +1,695 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Heart, Clock, BookOpen, Users, Star, Play, Volume2, Target } from 'lucide-react';
-import GameMinigames from "../components/game/minigames/gameMinigames.jsx";
-import { gameStyles } from "../components/game/styles/gameStyles.js";
+// src/pages/RomancePageRefactored.jsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const EnhancedRomanceGame = () => {
-  const [currentLanguage, setCurrentLanguage] = useState('zh-tw');
-  const [gamePhase, setGamePhase] = useState('intro');
-  const [selectedCharacter, setSelectedCharacter] = useState(null);
-  const [crushAffection, setCrushAffection] = useState(50);
-  const [playerScore, setPlayerScore] = useState(0);
-  const [currentScenario, setCurrentScenario] = useState(0);
-  const [currentMinigame, setCurrentMinigame] = useState(null);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [userInput, setUserInput] = useState('');
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [gameActive, setGameActive] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [gameStats, setGameStats] = useState({
-    correctAnswers: 0,
-    totalQuestions: 0,
-    notesExchanged: 0,
-    teacherTroubles: 0,
-    scenariosCompleted: 0
-  });
-  const [messageBox, setMessageBox] = useState({
-    isVisible: false,
-    title: '',
-    message: '',
-    type: 'info'
-  });
-  const openaiApiKeyRef = useRef('');
+// Import the new modular system
+import GameEngine from '../components/game/core/GameEngine';
+import MinigameContainer from '../components/game/minigames/MinigameContainer';
+import { romanceStoryConfig } from '../components/game/story/StoryArcTemplate';
+import {
+  GameHeader,
+  RelationshipPanel,
+  PlayerStatsPanel,
+  ProgressTracker,
+  GameStatsPanel,
+  DialogInterface
+} from '../components/game/ui/SharedUIComponents';
 
-  const timerRef = useRef(null);
+const RomancePageRefactored = () => {
+  const navigate = useNavigate();
+  
+  // Local state for UI-specific concerns
+  const [currentDialogue, setCurrentDialogue] = useState(null);
+  const [showMinigame, setShowMinigame] = useState(false);
+  const [minigameConfig, setMinigameConfig] = useState(null);
+  const [showEndingModal, setShowEndingModal] = useState(false);
+  const [gameEnded, setGameEnded] = useState(false);
 
-  // This function is defined but no longer used for the Connections Game
-  const generateConnectionsGame = async () => {
-    const systemPrompt = "Generate a new Connections-style puzzle for a Chinese language learning game. The puzzle should have 4 categories with 4 related items in each. The items must be common Chinese words or characters, suitable for a beginner to intermediate learner. The response must be a JSON object with the specified schema.";
-    const userQuery = "Create a Chinese Connections puzzle.";
-    const apiKey = openaiApiKeyRef.current;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+  // Game completion handler
+  const handleGameComplete = (finalStats) => {
+    setGameEnded(true);
+    setShowEndingModal(true);
+    console.log('Game completed with stats:', finalStats);
+  };
 
-    const payload = {
-        contents: [{ parts: [{ text: userQuery }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: "OBJECT",
-                properties: {
-                    "categories": {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                "category": {
-                                    type: "OBJECT",
-                                    properties: {
-                                        "zh-tw": { "type": "STRING" },
-                                        "zh-cn": { "type": "STRING" },
-                                        "en": { "type": "STRING" }
-                                    }
-                                },
-                                "items": { "type": "ARRAY", "items": { "type": "STRING" } }
-                            }
-                        }
-                    }
+  // Enhanced romance story configuration with specific minigames
+  const enhancedRomanceConfig = {
+    ...romanceStoryConfig,
+    
+    // Add more detailed minigame configurations
+    acts: romanceStoryConfig.acts.map(act => ({
+      ...act,
+      scenes: act.scenes.map(scene => ({
+        ...scene,
+        dialogue: scene.dialogue?.map(dialogueItem => {
+          if (dialogueItem.type === 'minigame_trigger') {
+            // Enhanced minigame configurations for romance
+            const minigameEnhancements = {
+              note_passing: {
+                ...dialogueItem.minigame.config,
+                activities: [
+                  {
+                    name: { 'zh-tw': '寫甜蜜紙條', 'zh-cn': '写甜蜜纸条', 'en': 'Write Sweet Note' },
+                    description: { 'zh-tw': '寫一張浪漫的紙條', 'zh-cn': '写一张浪漫的纸条', 'en': 'Write a romantic note' },
+                    successRate: 0.8,
+                    points: 80,
+                    emoji: '💕'
+                  }
+                ]
+              },
+              connections: {
+                ...dialogueItem.minigame.config,
+                words: [
+                  { 'zh-tw': '春天', 'zh-cn': '春天', 'en': 'spring' },
+                  { 'zh-tw': '櫻花', 'zh-cn': '樱花', 'en': 'cherry blossoms' },
+                  { 'zh-tw': '夏天', 'zh-cn': '夏天', 'en': 'summer' },
+                  { 'zh-tw': '海邊', 'zh-cn': '海边', 'en': 'seaside' },
+                  { 'zh-tw': '秋天', 'zh-cn': '秋天', 'en': 'autumn' },
+                  { 'zh-tw': '楓葉', 'zh-cn': '枫叶', 'en': 'maple leaves' },
+                  { 'zh-tw': '冬天', 'zh-cn': '冬天', 'en': 'winter' },
+                  { 'zh-tw': '雪花', 'zh-cn': '雪花', 'en': 'snowflakes' }
+                ],
+                pairs: [
+                  [{ 'zh-tw': '春天', 'zh-cn': '春天', 'en': 'spring' }, { 'zh-tw': '櫻花', 'zh-cn': '樱花', 'en': 'cherry blossoms' }],
+                  [{ 'zh-tw': '夏天', 'zh-cn': '夏天', 'en': 'summer' }, { 'zh-tw': '海邊', 'zh-cn': '海边', 'en': 'seaside' }],
+                  [{ 'zh-tw': '秋天', 'zh-cn': '秋天', 'en': 'autumn' }, { 'zh-tw': '楓葉', 'zh-cn': '枫叶', 'en': 'maple leaves' }],
+                  [{ 'zh-tw': '冬天', 'zh-cn': '冬天', 'en': 'winter' }, { 'zh-tw': '雪花', 'zh-cn': '雪花', 'en': 'snowflakes' }]
+                ]
+              },
+              quiz: {
+                ...dialogueItem.minigame.config,
+                questions: [
+                  {
+                    question: { 'zh-tw': '在台灣，情人節通常送什麼花？', 'zh-cn': '在台湾，情人节通常送什么花？', 'en': 'In Taiwan, what flowers are usually given on Valentine\'s Day?' },
+                    options: [
+                      { 'zh-tw': '玫瑰', 'zh-cn': '玫瑰', 'en': 'Roses' },
+                      { 'zh-tw': '百合', 'zh-cn': '百合', 'en': 'Lilies' },
+                      { 'zh-tw': '向日葵', 'zh-cn': '向日葵', 'en': 'Sunflowers' },
+                      { 'zh-tw': '蘭花', 'zh-cn': '兰花', 'en': 'Orchids' }
+                    ],
+                    correct: 0
+                  },
+                  {
+                    question: { 'zh-tw': '「我喜歡你」用台語怎麼說？', 'zh-cn': '「我喜欢你」用台语怎么说？', 'en': 'How do you say "I like you" in Taiwanese?' },
+                    options: [
+                      { 'zh-tw': '我佮意你', 'zh-cn': '我佮意你', 'en': 'Góa kah-ì lí' },
+                      { 'zh-tw': '我愛你', 'zh-cn': '我爱你', 'en': 'Góa ài lí' },
+                      { 'zh-tw': '我想你', 'zh-cn': '我想你', 'en': 'Góa siūnn lí' },
+                      { 'zh-tw': '我疼你', 'zh-cn': '我疼你', 'en': 'Góa thiànn lí' }
+                    ],
+                    correct: 0
+                  }
+                ]
+              },
+              date_simulator: {
+                ...dialogueItem.minigame.config,
+                targetCharacter: 'shen_jiayi',
+                activities: [
+                  {
+                    name: { 'zh-tw': '一起看電影', 'zh-cn': '一起看电影', 'en': 'Watch Movie Together' },
+                    description: { 'zh-tw': '在電影院享受浪漫時光', 'zh-cn': '在电影院享受浪漫时光', 'en': 'Enjoy romantic time at the cinema' },
+                    successRate: 0.75,
+                    points: 60,
+                    emoji: '🎬',
+                    successMessage: { 'zh-tw': '電影很棒，你們聊了很多！', 'zh-cn': '电影很棒，你们聊了很多！', 'en': 'Great movie, you talked a lot!' },
+                    failMessage: { 'zh-tw': '電影有點無聊...', 'zh-cn': '电影有点无聊...', 'en': 'The movie was a bit boring...' }
+                  },
+                  {
+                    name: { 'zh-tw': '逛夜市', 'zh-cn': '逛夜市', 'en': 'Visit Night Market' },
+                    description: { 'zh-tw': '品嚐台灣小吃，體驗在地文化', 'zh-cn': '品尝台湾小吃，体验在地文化', 'en': 'Taste Taiwanese snacks, experience local culture' },
+                    successRate: 0.85,
+                    points: 70,
+                    emoji: '🍜',
+                    successMessage: { 'zh-tw': '夜市美食讓你們更親近了！', 'zh-cn': '夜市美食让你们更亲近了！', 'en': 'Night market food brought you closer!' },
+                    failMessage: { 'zh-tw': '人太多了，有點擠...', 'zh-cn': '人太多了，有点挤...', 'en': 'Too crowded, a bit cramped...' }
+                  },
+                  {
+                    name: { 'zh-tw': '圖書館讀書', 'zh-cn': '图书馆读书', 'en': 'Study at Library' },
+                    description: { 'zh-tw': '安靜的環境，專心學習', 'zh-cn': '安静的环境，专心学习', 'en': 'Quiet environment, focused studying' },
+                    successRate: 0.9,
+                    points: 80,
+                    emoji: '📚',
+                    successMessage: { 'zh-tw': '學習氣氛很棒，她很欣賞你的認真！', 'zh-cn': '学习气氛很棒，她很欣赏你的认真！', 'en': 'Great study atmosphere, she appreciates your seriousness!' },
+                    failMessage: { 'zh-tw': '太安靜了，有點尷尬...', 'zh-cn': '太安静了，有点尴尬...', 'en': 'Too quiet, a bit awkward...' }
+                  }
+                ]
+              },
+              voice_chat: {
+                ...dialogueItem.minigame.config,
+                targetCharacter: 'shen_jiayi',
+                initialMessage: { 'zh-tw': '今天的夕陽真美呢...', 'zh-cn': '今天的夕阳真美呢...', 'en': 'The sunset is really beautiful today...' },
+                aiResponses: [
+                  { 'zh-tw': '是啊，跟你一起看更美', 'zh-cn': '是啊，跟你一起看更美', 'en': 'Yes, it\'s even more beautiful watching it with you' },
+                  { 'zh-tw': '你今天看起來很開心', 'zh-cn': '你今天看起来很开心', 'en': 'You look very happy today' },
+                  { 'zh-tw': '謝謝你陪我', 'zh-cn': '谢谢你陪我', 'en': 'Thank you for being with me' },
+                  { 'zh-tw': '我們明天還能再見面嗎？', 'zh-cn': '我们明天还能再见面吗？', 'en': 'Can we meet again tomorrow?' }
+                ]
+              }
+            };
+
+            return {
+              ...dialogueItem,
+              minigame: {
+                ...dialogueItem.minigame,
+                config: {
+                  ...dialogueItem.minigame.config,
+                  ...minigameEnhancements[dialogueItem.minigame.type]
                 }
-            }
+              }
+            };
+          }
+          return dialogueItem;
+        })
+      }))
+    }))
+  };
+
+  return (
+    <GameEngine
+      storyConfig={enhancedRomanceConfig}
+      onGameComplete={handleGameComplete}
+      initialState={{
+        playerStats: {
+          charisma: 45,
+          intelligence: 55,
+          creativity: 50,
+          empathy: 60
         }
-    };
-
-    try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const result = await response.json();
-        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (jsonText) {
-            return JSON.parse(jsonText).categories;
-        }
-        console.error("No valid response from API");
-        return null;
-    } catch (error) {
-        console.error("API call failed:", error);
-        return null;
-    }
-  };
-
-  const characters = {
-    male: {
-      name: { 'zh-tw': '柯景騰', 'zh-cn': '柯景腾', 'en': 'Ko Ching-teng' },
-      description: { 'zh-tw': '調皮但溫柔的男生', 'zh-cn': '调皮但温柔的男生', 'en': 'Mischievous but gentle boy' },
-      emoji: '🤓',
-      personality: { 'zh-tw': '幽默、直率、有點笨拙但很真誠', 'zh-cn': '幽默、直率、有点笨拙但很真诚', 'en': 'Humorous, straightforward, a bit clumsy but sincere' }
-    },
-    female: {
-      name: { 'zh-tw': '沈佳宜', 'zh-cn': '沈佳宜', 'en': 'Shen Chia-yi' },
-      description: { 'zh-tw': '班上的模範生', 'zh-cn': '班上的模范生', 'en': 'Class model student' },
-      emoji: '📚',
-      personality: { 'zh-tw': '聰明、認真、有點害羞但很溫柔', 'zh-cn': '聪明、认真、有点害羞但很温柔', 'en': 'Smart, serious, a bit shy but very gentle' }
-    }
-  };
-
-  const scenarios = [
-    {
-      id: 'note_passing',
-      title: { 'zh-tw': '課堂傳紙條', 'zh-cn': '课堂传纸条', 'en': 'Passing Notes in Class' },
-      description: { 'zh-tw': '在數學課上偷偷傳紙條...', 'zh-cn': '在数学课上偷偷传纸条...', 'en': 'Secretly passing notes in math class...' },
-      background: {
-        'zh-tw': '下午的數學課，陽光透過窗戶灑進教室。老師在黑板上寫著複雜的方程式，而你的心思卻完全不在數學上。坐在前排的她專心做筆記，你想要引起她的注意...',
-        'zh-cn': '下午的数学课，阳光透过窗户洒进教室。老师在黑板上写着复杂的方程式，而你的心思却完全不在数学上。坐在前排的她專心做筆記，你想要引起她的注意...',
-        'en': 'During afternoon math class, sunlight streams through the windows. The teacher writes complex equations on the blackboard, but your mind is not on math at all. She sits in the front row, taking notes seriously, and you want to get her attention...'
-      },
-      timeLimit: 45,
-      minigames: ['note_writing', 'voice_chat'],
-      objective: { 'zh-tw': '目標：成功傳遞紙條並開始對話', 'zh-cn': '目标：成功传递纸条并开始对话', 'en': 'Objective: Successfully pass a note and start a conversation' }
-    },
-    {
-      id: 'library_study',
-      title: { 'zh-tw': '圖書館唸書', 'zh-cn': '图书馆念书', 'en': 'Library Study Session' },
-      description: { 'zh-tw': '期中考前的圖書館約會...', 'zh-cn': '期中考前的图书馆约会...', 'en': 'Library date before midterm exams...' },
-      background: {
-        'zh-tw': '期中考前一週，圖書館裡人潮洶湧。你們約好一起來複習，她帶了一堆參考書，而你...其實只是想多看她幾眼。安靜的環境讓每個小動作都顯得特別明顯。',
-        'zh-cn': '期中考前一周，图书馆里人潮汹涌。你们约好一起来复习，她带了一堆参考书，而你...其实只是想多看她几眼。安静的环境让每个小动作都显得特别明显。',
-        'en': 'One week before midterm exams, the library is crowded. You agreed to study together, she brought a pile of reference books, while you... actually just want to steal more glances at her. The quiet environment makes every small gesture particularly noticeable.'
-      },
-      timeLimit: 60,
-      minigames: ['connections_game', 'voice_chat'],
-      objective: { 'zh-tw': '目標：證明你的學習能力並加深友誼', 'zh-cn': '目标：证明你的学习能力并加深友谊', 'en': 'Objective: Prove your academic ability and deepen friendship' }
-    },
-    {
-      id: 'school_festival',
-      title: { 'zh-tw': '校慶園遊會', 'zh-cn': '校庆园游会', 'en': 'School Festival' },
-      description: { 'zh-tw': '一年一度的校慶活動...', 'zh-cn': '一年一度的校庆活动...', 'en': 'Annual school festival activities...' },
-      background: {
-        'zh-tw': '校慶當天，整個校園充滿了歡樂的氣氛。各班都有攤位，你們班負責章魚燒攤位。她穿著可愛的圍裙幫忙，你負責招攬客人。這是個絕佳的機會，展現你的魅力！',
-        'zh-cn': '校庆当天，整个校园充满了欢乐的气氛。各班都有摊位，你们班负责章鱼烧摊位。她穿着可爱的围裙帮忙，你负责招揽客人。这是个绝佳的机会，展现你的魅力！',
-        'en': 'On the day of the school festival, the entire campus is filled with joyful atmosphere. Each class has a booth, and your class is in charge of the takoyaki stand. She helps out wearing a cute apron, while you\'re responsible for attracting customers. This is a perfect opportunity to show your charm!'
-      },
-      timeLimit: 50,
-      minigames: ['festival_activities', 'voice_chat'],
-      objective: { 'zh-tw': '目標：在校慶活動中創造美好回憶', 'zh-cn': '目标：在校庆活动中创造美好回忆', 'en': 'Objective: Create beautiful memories during the school festival' }
-    }
-  ];
-
-  const t = (textMap) => {
-    if (typeof textMap === 'string') return textMap;
-    return textMap[currentLanguage] || textMap['zh-tw'] || textMap;
-  };
-
-  const toggleLanguage = () => {
-    const languages = ['zh-tw', 'zh-cn', 'en'];
-    const currentIndex = languages.indexOf(currentLanguage);
-    const nextIndex = (currentIndex + 1) % languages.length;
-    setCurrentLanguage(languages[nextIndex]);
-  };
-
-  useEffect(() => {
-    if (timeLeft > 0 && gameActive) {
-      timerRef.current = setTimeout(() => {
-        setTimeLeft(timeLeft - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && gameActive) {
-      handleTimeUp();
-    }
-    return () => clearTimeout(timerRef.current);
-  }, [timeLeft, gameActive]);
-
-  const handleTimeUp = () => {
-    setGameActive(false);
-    setCrushAffection(prev => Math.max(0, prev - 15));
-    setMessageBox({
-      isVisible: true,
-      title: t({ 'zh-tw': '⏰ 時間到了！', 'zh-cn': '⏰ 时间到了！', 'en': '⏰ Time\'s Up!' }),
-      message: t({ 'zh-tw': '你錯失了這次的機會，好感度下降了...', 'zh-cn': '你错失了这次的机会，好感度下降了...', 'en': 'You missed this opportunity, affection decreased...' }),
-      type: 'warning'
-    });
-  };
-
-  const startScenario = (scenarioIndex) => {
-    setCurrentScenario(scenarioIndex);
-    setGamePhase('scenario-intro');
-  };
-
-  const startMinigame = (minigameType) => {
-    setCurrentMinigame(minigameType);
-    setGamePhase('gameplay');
-    const scenario = scenarios[currentScenario];
-    setTimeLeft(scenario.timeLimit);
-    setGameActive(true);
-  };
-
-  const completeMinigame = (success, points = 0, resultMessage = '') => {
-    setGameActive(false);
-    clearTimeout(timerRef.current);
-    
-    const affectionChange = success ? 15 : -10;
-    setCrushAffection(prev => Math.max(0, Math.min(100, prev + affectionChange)));
-    setPlayerScore(prev => prev + points);
-    setGameStats(prev => ({
-      ...prev,
-      scenariosCompleted: prev.scenariosCompleted + 1,
-      correctAnswers: success ? prev.correctAnswers + 1 : prev.correctAnswers,
-      totalQuestions: prev.totalQuestions + 1
-    }));
-
-    setMessageBox({
-      isVisible: true,
-      title: success ? t({ 'zh-tw': '✨ 成功！', 'zh-cn': '✨ 成功！', 'en': '✨ Success!' }) : 
-                     t({ 'zh-tw': '💔 失敗...', 'zh-cn': '💔 失败...', 'en': '💔 Failed...' }),
-      message: resultMessage,
-      type: success ? 'success' : 'error'
-    });
-
-    setTimeout(() => {
-      setMessageBox({ isVisible: false, title: '', message: '', type: 'info' });
-      if (gameStats.scenariosCompleted + 1 >= 2) {
-        setGamePhase('ending');
-      } else {
-        setGamePhase('character-select');
-      }
-    }, 3000);
-  };
-
-  const resetGame = () => {
-    setCrushAffection(50);
-    setPlayerScore(0);
-    setCurrentScenario(0);
-    setChatHistory([]);
-    setTimeLeft(0);
-    setGameActive(false);
-    setGameStats({
-      correctAnswers: 0,
-      totalQuestions: 0,
-      notesExchanged: 0,
-      teacherTroubles: 0,
-      scenariosCompleted: 0
-    });
-    setMessageBox({ isVisible: false, title: '', message: '', type: 'info' });
-    setGamePhase('intro');
-    setSelectedCharacter(null);
-    setCurrentMinigame(null);
-  };
-
-  const handleGoBack = () => {
-    setGamePhase('scenario-intro');
-    setCurrentMinigame(null);
-    setGameActive(false);
-    clearTimeout(timerRef.current);
-  };
-
-  const getMinigameTitle = (minigame) => {
-    const titles = {
-      note_writing: { 'zh-tw': '📝 傳紙條', 'zh-cn': '📝 传纸条', 'en': '📝 Pass Note' },
-      connections_game: { 'zh-tw': '🧠 中文連線', 'zh-cn': '🧠 中文连线', 'en': '🧠 Chinese Connections' },
-      voice_chat: { 'zh-tw': '💬 語音對話', 'zh-cn': '💬 语音对话', 'en': '💬 Voice Chat' },
-      festival_activities: { 'zh-tw': '🎪 節慶活動', 'zh-cn': '🎪 节庆活动', 'en': '🎪 Festival Activities' }
-    };
-    return t(titles[minigame] || { 'zh-tw': '未知活動', 'zh-cn': '未知活动', 'en': 'Unknown Activity' });
-  };
-
-  const renderIntro = () => (
-    <div style={gameStyles.gameContainer}>
-      <div style={gameStyles.introContent}>
-        <div style={gameStyles.moviePoster}>🎬</div>
-        <h1 style={gameStyles.gameTitle}>
-          {t({ 'zh-tw': '那些年，我們一起追的女孩', 'zh-cn': '那些年，我们一起追的女孩', 'en': 'You Are the Apple of My Eye' })}
-        </h1>
-        <p style={gameStyles.gameSubtitle}>
-          {t({ 'zh-tw': '校園戀愛互動遊戲 - 語音對話版', 'zh-cn': '校园恋爱互动游戏 - 语音对话版', 'en': 'School Romance Interactive Game - Voice Chat Edition' })}
-        </p>
-        <div style={gameStyles.introDescription}>
-          {t({ 'zh-tw': '重溫那些青春歲月，體驗純真的校園戀愛。透過語音對話、傳紙條、問答挑戰等方式，和心儀的對象建立關係。每個選擇都會影響你們的故事結局！',
-               'zh-cn': '重温那些青春岁月，体验纯真的校园恋爱。通过语音对话、传纸条、问答挑战等方式，和心仪的对象建立关系。每个选择都会影响你们的故事结局！',
-               'en': 'Relive those youthful years and experience pure school romance. Build relationships with your crush through voice chat, note passing, and quiz challenges. Every choice affects your story ending!' })}
-        </div>
-                <div style={gameStyles.gameFeatures}>
-          <div style={gameStyles.feature}>
-            <Mic style={gameStyles.featureIcon} />
-            <span>{t({ 'zh-tw': '語音對話', 'zh-cn': '语音对话', 'en': 'Voice Chat' })}</span>
-          </div>
-          <div style={gameStyles.feature}>
-            <Clock style={gameStyles.featureIcon} />
-            <span>{t({ 'zh-tw': '時間挑戰', 'zh-cn': '时间挑战', 'en': 'Time Challenge' })}</span>
-          </div>
-          <div style={gameStyles.feature}>
-            <Heart style={gameStyles.featureIcon} />
-            <span>{t({ 'zh-tw': '多重結局', 'zh-cn': '多重结局', 'en': 'Multiple Endings' })}</span>
-          </div>
-        </div>
-        <button onClick={() => setGamePhase('character-select')} style={gameStyles.startButton}>
-          {t({ 'zh-tw': '🎮 開始遊戲', 'zh-cn': '🎮 开始游戏', 'en': '🎮 Start Game' })}
-        </button>
-      </div>
-    </div>
+      }}
+    >
+      <RomanceGameContent
+        currentDialogue={currentDialogue}
+        setCurrentDialogue={setCurrentDialogue}
+        showMinigame={showMinigame}
+        setShowMinigame={setShowMinigame}
+        minigameConfig={minigameConfig}
+        setMinigameConfig={setMinigameConfig}
+        showEndingModal={showEndingModal}
+        setShowEndingModal={setShowEndingModal}
+        gameEnded={gameEnded}
+        navigate={navigate}
+      />
+    </GameEngine>
   );
-
-  const renderCharacterSelect = () => (
-    <div style={gameStyles.gameContainer}>
-      <h2 style={gameStyles.sectionTitle}>{t({ 'zh-tw': '選擇你的角色', 'zh-cn': '选择你的角色', 'en': 'Choose Your Character' })}</h2>
-      <div style={gameStyles.characterGrid}>
-        {Object.entries(characters).map(([key, character]) => (
-          <div
-            key={key}
-            onClick={() => setSelectedCharacter(key)}
-            style={{
-              ...gameStyles.characterCard,
-              border: selectedCharacter === key ? '3px solid #e91e63' : '3px solid transparent'
-            }}
-          >
-            <div style={gameStyles.characterEmoji}>{character.emoji}</div>
-            <h3 style={gameStyles.characterName}>{t(character.name)}</h3>
-            <p style={gameStyles.characterDescription}>{t(character.description)}</p>
-            <p style={gameStyles.characterPersonality}>{t(character.personality)}</p>
-          </div>
-        ))}
-      </div>
-      {selectedCharacter && (
-        <div style={gameStyles.scenarioSelection}>
-          <h3>{t({ 'zh-tw': '選擇情境', 'zh-cn': '选择情境', 'en': 'Choose Scenario' })}</h3>
-          <div style={gameStyles.scenarioGrid}>
-            {scenarios.map((scenario, index) => (
-              <div
-                key={scenario.id}
-                onClick={() => startScenario(index)}
-                style={gameStyles.scenarioCard}
-              >
-                <h4>{t(scenario.title)}</h4>
-                <p>{t(scenario.description)}</p>
-                <div style={gameStyles.scenarioInfo}>
-                  <span><Clock size={16} /> {scenario.timeLimit}s</span>
-                  <span><Star size={16} /> {scenario.minigames.length} {t({ 'zh-tw': '活動', 'zh-cn': '活动', 'en': 'activities' })}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderScenarioIntro = () => {
-    const scenario = scenarios[currentScenario];
-    return (
-      <div style={gameStyles.gameContainer}>
-        <div style={gameStyles.scenarioIntroCard}>
-          <h2>{t(scenario.title)}</h2>
-          <div style={gameStyles.scenarioBackground}>
-            {t(scenario.background)}
-          </div>
-          <div style={gameStyles.scenarioDetails}>
-            <div style={gameStyles.timeInfo}>
-              <Clock size={20} />
-              <span>{t({ 'zh-tw': '時間限制', 'zh-cn': '时间限制', 'en': 'Time Limit' })}: {scenario.timeLimit}{t({ 'zh-tw': '秒', 'zh-cn': '秒', 'en': 's' })}</span>
-            </div>
-            <div style={gameStyles.objectiveInfo}>
-              <Target size={20} />
-              <span>{t(scenario.objective)}</span>
-            </div>
-          </div>
-          <div style={gameStyles.minigameOptions}>
-            <h3>{t({ 'zh-tw': '選擇你的行動', 'zh-cn': '选择你的行动', 'en': 'Choose Your Action' })}</h3>
-            <div style={gameStyles.minigameButtons}>
-              {scenario.minigames.map((minigame, index) => (
-                <button
-                  key={index}
-                  onClick={() => startMinigame(minigame)}
-                  style={gameStyles.minigameButton}
-                >
-                  {getMinigameTitle(minigame)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderGameplay = () => {
-    const crushCharacter = selectedCharacter === 'male' ? characters.female : characters.male;
-    
-    return (
-      <div style={gameStyles.gameContainer}>
-        <div style={gameStyles.gameHeader}>
-          <div style={gameStyles.affectionContainer}>
-            <h3>{t(crushCharacter.name)} {crushCharacter.emoji}</h3>
-            <div style={gameStyles.affectionMeter}>
-              <div style={{
-                ...gameStyles.affectionFill,
-                width: `${crushAffection}%`,
-                backgroundColor: crushAffection >= 80 ? '#4caf50' : crushAffection >= 60 ? '#ff9800' : '#f44336'
-              }}></div>
-            </div>
-            <div style={gameStyles.affectionText}>
-              <Heart size={16} /> {crushAffection}%
-            </div>
-          </div>
-          
-          <div style={gameStyles.timerContainer}>
-            <div style={{
-              ...gameStyles.timer,
-              color: timeLeft <= 10 ? '#f44336' : timeLeft <= 20 ? '#ff9800' : '#4caf50'
-            }}>
-              <Clock size={20} />
-              {timeLeft}s
-            </div>
-          </div>
-          
-          <div style={gameStyles.scoreContainer}>
-            <Star size={16} />
-            <span>{playerScore} {t({ 'zh-tw': '分', 'zh-cn': '分', 'en': 'pts' })}</span>
-          </div>
-        </div>
-
-        <div style={gameStyles.minigameArea}>
-          <GameMinigames
-            gameActive={gameActive}
-            timeLeft={timeLeft}
-            currentLanguage={currentLanguage}
-            t={t}
-            userInput={userInput}
-            setUserInput={setUserInput}
-            isRecording={isRecording}
-            setIsRecording={setIsRecording}
-            chatHistory={chatHistory}
-            setChatHistory={setChatHistory}
-            gameStats={gameStats}
-            setGameStats={setGameStats}
-            onComplete={completeMinigame}
-            currentMinigame={currentMinigame}
-            selectedCharacter={selectedCharacter}
-            characters={characters}
-            onGoBack={handleGoBack}
-          />
-        </div>
-      </div>
-    );
-  };
-
-const renderEnding = () => {
-    let endingType, endingMessage, endingEmoji;
-    
-    if (crushAffection >= 80) {
-      endingType = { 'zh-tw': '💕 完美結局', 'zh-cn': '💕 完美结局', 'en': '💕 Perfect Ending' };
-      endingMessage = { 'zh-tw': '你們成為了最佳情侶！', 'zh-cn': '你们成为了最佳情侣！', 'en': 'You became the perfect couple!' };
-      endingEmoji = '🎉';
-    } else if (crushAffection >= 60) {
-      endingType = { 'zh-tw': '😊 好結局', 'zh-cn': '😊 好结局', 'en': '😊 Good Ending' };
-      endingMessage = { 'zh-tw': '你們成為了好朋友！', 'zh-cn': '你们成为了好朋友！', 'en': 'You became good friends!' };
-      endingEmoji = '🤝';
-    } else {
-      endingType = { 'zh-tw': '😔 普通結局', 'zh-cn': '😔 普通结局', 'en': '😔 Normal Ending' };
-      endingMessage = { 'zh-tw': '還需要更多努力...', 'zh-cn': '还需要更多努力...', 'en': 'Need more effort...' };
-      endingEmoji = '💪';
-    }
-
-    const handleShare = () => {
-        const shareText = `我在《那些年，我們一起追的女孩》互動遊戲中達成了 ${t(endingType)}！
-        最終好感度: ${crushAffection}%
-        總分數: ${playerScore}
-        正確答案: ${gameStats.correctAnswers}/${gameStats.totalQuestions}
-        想挑戰看看嗎？一起來玩！#那些年 #中文學習`;
-
-        // Copy text to clipboard
-        navigator.clipboard.writeText(shareText)
-            .then(() => {
-                alert(t({
-                    'zh-tw': '結果已複製到剪貼簿，快去分享吧！',
-                    'zh-cn': '结果已复制到剪贴板，快去分享吧！',
-                    'en': 'Results copied to clipboard, go share them!'
-                }));
-            })
-            .catch(err => {
-                console.error('Failed to copy text: ', err);
-                alert(t({
-                    'zh-tw': '複製失敗，請手動複製以下文字：',
-                    'zh-cn': '复制失败，请手动复制以下文字：',
-                    'en': 'Failed to copy, please manually copy the following text:'
-                }) + '\n' + shareText);
-            });
-    };
-
-    return (
-      <div style={gameStyles.gameContainer}>
-        <div style={gameStyles.endingCard}>
-          <div style={gameStyles.endingEmoji}>{endingEmoji}</div>
-          <h2 style={gameStyles.endingTitle}>{t(endingType)}</h2>
-          <h3 style={gameStyles.endingMessage}>{t(endingMessage)}</h3>
-          
-          <div style={gameStyles.finalStats}>
-            <div style={gameStyles.statItem}>
-              <Heart size={20} />
-              <span>{t({ 'zh-tw': '最終好感度', 'zh-cn': '最终好感度', 'en': 'Final Affection' })}: {crushAffection}%</span>
-            </div>
-            <div style={gameStyles.statItem}>
-              <Star size={20} />
-              <span>{t({ 'zh-tw': '總分數', 'zh-cn': '总分数', 'en': 'Total Score' })}: {playerScore}</span>
-            </div>
-            <div style={gameStyles.statItem}>
-              <Users size={20} />
-              <span>{t({ 'zh-tw': '完成情境', 'zh-cn': '完成情境', 'en': 'Scenarios Completed' })}: {gameStats.scenariosCompleted}</span>
-            </div>
-            <div style={gameStyles.statItem}>
-              <BookOpen size={20} />
-              <span>{t({ 'zh-tw': '正確答案', 'zh-cn': '正确答案', 'en': 'Correct Answers' })}: {gameStats.correctAnswers}/{gameStats.totalQuestions}</span>
-            </div>
-          </div>
-          
-          <button onClick={resetGame} style={gameStyles.playAgainButton}>
-            {t({ 'zh-tw': '🔄 重新開始', 'zh-cn': '🔄 重新开始', 'en': '🔄 Play Again' })}
-          </button>
-          
-          {/* Add the new Share button */}
-          <button onClick={handleShare} style={gameStyles.shareButton}>
-            {t({ 'zh-tw': '分享結果', 'zh-cn': '分享结果', 'en': 'Share Results' })}
-          </button>
-        </div>
-      </div>
-    );
 };
 
-  const MessageBox = () => {
-    if (!messageBox.isVisible) return null;
-    
-    return (
-      <div style={gameStyles.messageBoxOverlay}>
-        <div style={{
-          ...gameStyles.messageBoxContent,
-          borderColor: messageBox.type === 'success' ? '#4caf50' : messageBox.type === 'error' ? '#f44336' : '#ff9800'
-        }}>
-          <h3 style={gameStyles.messageBoxTitle}>{messageBox.title}</h3>
-          <p style={gameStyles.messageBoxMessage}>{messageBox.message}</p>
-          <button 
-            onClick={() => setMessageBox({ isVisible: false, title: '', message: '', type: 'info' })}
-            style={gameStyles.messageBoxButton}
-          >
-            {t({ 'zh-tw': '確定', 'zh-cn': '确定', 'en': 'OK' })}
-          </button>
-        </div>
-      </div>
-    );
+// Main game content component that receives gameContext from GameEngine
+const RomanceGameContent = ({ 
+  gameContext,
+  currentDialogue,
+  setCurrentDialogue,
+  showMinigame,
+  setShowMinigame,
+  minigameConfig,
+  setMinigameConfig,
+  showEndingModal,
+  setShowEndingModal,
+  gameEnded,
+  navigate
+}) => {
+  const { 
+    gameState, 
+    storyConfig, 
+    t, 
+    advanceStory, 
+    resetGame, 
+    goBackToLearn,
+    handleMinigameComplete 
+  } = gameContext;
+
+  // Get current story elements
+  const currentAct = storyConfig.story.acts[gameState.currentAct];
+  const currentScene = currentAct?.scenes[gameState.currentScene];
+  const currentDialogueItem = currentScene?.dialogue[gameState.currentDialogue];
+
+  // Handle story progression
+  useEffect(() => {
+    if (currentDialogueItem && !showMinigame) {
+      setCurrentDialogue(currentDialogueItem);
+    }
+  }, [currentDialogueItem, showMinigame, setCurrentDialogue]);
+
+  // Handle dialogue choices
+  const handleDialogueChoice = (choice) => {
+    if (choice.action === 'minigame') {
+      setMinigameConfig({
+        type: choice.minigame.type,
+        config: choice.minigame.config
+      });
+      setShowMinigame(true);
+    } else if (choice.action === 'dialogue') {
+      // Apply immediate relationship changes
+      if (choice.relationshipChanges) {
+        Object.keys(choice.relationshipChanges).forEach(characterId => {
+          gameContext.updateRelationship(characterId, choice.relationshipChanges[characterId]);
+        });
+      }
+      
+      advanceStory();
+    }
+    setCurrentDialogue(null);
   };
 
-  const renderContent = () => {
-    switch (gamePhase) {
+  // Handle minigame completion
+  const handleMinigameResult = (result) => {
+    handleMinigameComplete(result);
+    setShowMinigame(false);
+    setMinigameConfig(null);
+    
+    // Advance story after minigame
+    setTimeout(() => {
+      advanceStory();
+    }, 1000);
+  };
+
+  // Handle continuing dialogue
+  const handleContinueDialogue = () => {
+    advanceStory();
+    setCurrentDialogue(null);
+  };
+
+  // Render different game phases
+  const renderGamePhase = () => {
+    switch (gameState.gamePhase) {
       case 'intro':
-        return renderIntro();
-      case 'character-select':
-        return renderCharacterSelect();
-      case 'scenario-intro':
-        return renderScenarioIntro();
+        return <IntroScreen gameContext={gameContext} />;
+      
       case 'gameplay':
-        return renderGameplay();
+      case 'dialogue':
+        return (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '2fr 1fr',
+            gap: '20px',
+            minHeight: '70vh'
+          }}>
+            {/* Main game area */}
+            <div>
+              {showMinigame ? (
+                <MinigameContainer
+                  minigameType={minigameConfig.type}
+                  config={minigameConfig.config}
+                  gameContext={gameContext}
+                  onComplete={handleMinigameResult}
+                  onBack={() => {
+                    setShowMinigame(false);
+                    setMinigameConfig(null);
+                  }}
+                />
+              ) : (
+                <>
+                  {/* Scene setting */}
+                  {currentScene && (
+                    <div style={{
+                      background: 'linear-gradient(135deg, #fff3e0, #ffe0b2)',
+                      borderRadius: '15px',
+                      padding: '25px',
+                      marginBottom: '20px',
+                      border: '2px solid #ff9800'
+                    }}>
+                      <h3 style={{ 
+                        margin: '0 0 10px 0', 
+                        color: '#e65100',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px'
+                      }}>
+                        {t(currentScene.setting)}
+                      </h3>
+                      {currentScene.atmosphere && (
+                        <p style={{
+                          margin: 0,
+                          fontSize: '16px',
+                          fontStyle: 'italic',
+                          color: '#bf360c',
+                          lineHeight: '1.6'
+                        }}>
+                          {t(currentScene.atmosphere)}
+                        </p>
+                      )}
+                      {currentScene.objective && (
+                        <div style={{
+                          marginTop: '15px',
+                          padding: '12px',
+                          background: 'rgba(255,152,0,0.1)',
+                          borderRadius: '8px',
+                          border: '1px solid #ff9800'
+                        }}>
+                          <strong style={{ color: '#e65100' }}>
+                            🎯 {t({ 'zh-tw': '目標', 'zh-cn': '目标', 'en': 'Objective' })}: 
+                          </strong>
+                          <span style={{ marginLeft: '8px', color: '#bf360c' }}>
+                            {t(currentScene.objective)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Current dialogue */}
+                  {currentDialogue && (
+                    <DialogInterface
+                      dialogue={currentDialogue}
+                      gameContext={gameContext}
+                      onChoice={handleDialogueChoice}
+                      onContinue={handleContinueDialogue}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Sidebar with stats */}
+            <div>
+              <RelationshipPanel gameContext={gameContext} storyConfig={storyConfig} />
+              <PlayerStatsPanel gameContext={gameContext} storyConfig={storyConfig} />
+              <ProgressTracker gameContext={gameContext} storyConfig={storyConfig} />
+            </div>
+          </div>
+        );
+      
       case 'ending':
-        return renderEnding();
+        return <EndingScreen gameContext={gameContext} />;
+      
       default:
-        return renderIntro();
+        return <IntroScreen gameContext={gameContext} />;
     }
   };
 
   return (
-    <div style={gameStyles.gameContainer}>
-      <button onClick={toggleLanguage} style={gameStyles.languageToggle}>
-        {currentLanguage === 'zh-tw' ? '繁中' : 
-         currentLanguage === 'zh-cn' ? '简中' : 'EN'} ⚙️
-      </button>
+    <div style={{
+      minHeight: '100vh',
+      background: storyConfig.theme?.backgroundColor || 'linear-gradient(135deg, #ffebee, #f3e5f5)',
+      padding: '20px'
+    }}>
+      {/* Game Header */}
+      <GameHeader
+        gameContext={gameContext}
+        storyConfig={storyConfig}
+        onBack={goBackToLearn}
+        showTimer={gameState.gamePhase === 'gameplay' || gameState.gamePhase === 'dialogue'}
+      />
 
-      {renderContent()}
+      {/* Main content */}
+      <div style={{
+        maxWidth: '1400px',
+        margin: '0 auto',
+        paddingTop: '20px'
+      }}>
+        {renderGamePhase()}
+      </div>
 
-      <MessageBox />
+      {/* Game statistics panel (always visible) */}
+      {gameState.gamePhase !== 'intro' && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          width: '300px',
+          zIndex: 1000
+        }}>
+          <GameStatsPanel gameContext={gameContext} />
+        </div>
+      )}
     </div>
   );
 };
 
-export default EnhancedRomanceGame;
+// Intro screen component
+const IntroScreen = ({ gameContext }) => {
+  const { gameState, storyConfig, t, setGameState } = gameContext;
+
+  const startGame = () => {
+    setGameState(prev => ({
+      ...prev,
+      gamePhase: 'gameplay'
+    }));
+  };
+
+  return (
+    <div style={{
+      textAlign: 'center',
+      maxWidth: '800px',
+      margin: '0 auto',
+      padding: '40px 20px'
+    }}>
+      <div style={{ fontSize: '5rem', marginBottom: '20px' }}>🎬</div>
+      
+      <h1 style={{
+        fontSize: '3rem',
+        fontWeight: 'bold',
+        marginBottom: '15px',
+        color: storyConfig.theme?.primaryColor || '#e91e63',
+        textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
+      }}>
+        {t(storyConfig.title)}
+      </h1>
+      
+      <p style={{
+        fontSize: '1.3rem',
+        marginBottom: '30px',
+        color: '#666',
+        fontStyle: 'italic',
+        lineHeight: '1.6'
+      }}>
+        {t(storyConfig.description)}
+      </p>
+
+      {/* Learning objectives */}
+      <div style={{
+        background: 'rgba(255,255,255,0.9)',
+        borderRadius: '15px',
+        padding: '25px',
+        marginBottom: '30px',
+        textAlign: 'left'
+      }}>
+        <h3 style={{ 
+          marginBottom: '20px', 
+          color: storyConfig.theme?.primaryColor || '#e91e63',
+          textAlign: 'center'
+        }}>
+          {t({ 'zh-tw': '🎯 學習目標', 'zh-cn': '🎯 学习目标', 'en': '🎯 Learning Objectives' })}
+        </h3>
+        <ul style={{ lineHeight: '1.8', color: '#333', paddingLeft: '20px' }}>
+          {storyConfig.learningObjectives.map((objective, index) => (
+            <li key={index}>{t(objective)}</li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Game features */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '20px',
+        marginBottom: '40px'
+      }}>
+        <div style={{
+          background: 'rgba(255,255,255,0.9)',
+          borderRadius: '12px',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🎮</div>
+          <h4>{t({ 'zh-tw': '互動小遊戲', 'zh-cn': '互动小游戏', 'en': 'Interactive Minigames' })}</h4>
+          <p style={{ fontSize: '14px', color: '#666' }}>
+            {t({ 'zh-tw': '多種有趣的學習活動', 'zh-cn': '多种有趣的学习活动', 'en': 'Various fun learning activities' })}
+          </p>
+        </div>
+        
+        <div style={{
+          background: 'rgba(255,255,255,0.9)',
+          borderRadius: '12px',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '10px' }}>💕</div>
+          <h4>{t({ 'zh-tw': '角色關係', 'zh-cn': '角色关系', 'en': 'Character Relationships' })}</h4>
+          <p style={{ fontSize: '14px', color: '#666' }}>
+            {t({ 'zh-tw': '你的選擇影響故事發展', 'zh-cn': '你的选择影响故事发展', 'en': 'Your choices affect story development' })}
+          </p>
+        </div>
+        
+        <div style={{
+          background: 'rgba(255,255,255,0.9)',
+          borderRadius: '12px',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🌟</div>
+          <h4>{t({ 'zh-tw': '多重結局', 'zh-cn': '多重结局', 'en': 'Multiple Endings' })}</h4>
+          <p style={{ fontSize: '14px', color: '#666' }}>
+            {t({ 'zh-tw': '根據表現獲得不同結局', 'zh-cn': '根据表现获得不同结局', 'en': 'Different endings based on performance' })}
+          </p>
+        </div>
+      </div>
+
+      <button
+        onClick={startGame}
+        style={{
+          background: `linear-gradient(45deg, ${storyConfig.theme?.primaryColor || '#e91e63'}, ${storyConfig.theme?.secondaryColor || '#f8bbd9'})`,
+          color: 'white',
+          border: 'none',
+          borderRadius: '30px',
+          padding: '18px 40px',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          boxShadow: '0 6px 20px rgba(233, 30, 99, 0.4)',
+          transition: 'all 0.3s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.transform = 'translateY(-2px)';
+          e.target.style.boxShadow = '0 8px 25px rgba(233, 30, 99, 0.6)';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.transform = 'translateY(0)';
+          e.target.style.boxShadow = '0 6px 20px rgba(233, 30, 99, 0.4)';
+        }}
+      >
+        {t({ 'zh-tw': '🎬 開始青春戀愛之旅', 'zh-cn': '🎬 开始青春恋爱之旅', 'en': '🎬 Start Youth Romance Journey' })}
+      </button>
+    </div>
+  );
+};
+
+// Ending screen component
+const EndingScreen = ({ gameContext }) => {
+  const { gameState, storyConfig, t, resetGame, goBackToLearn } = gameContext;
+  
+  const averageAffection = Object.values(gameState.relationships).reduce((sum, rel) => {
+    return sum + (rel.affection || 0);
+  }, 0) / Object.keys(gameState.relationships).length;
+
+  const getEndingType = () => {
+    if (averageAffection >= 80) return 'perfect';
+    if (averageAffection >= 60) return 'good';
+    if (averageAffection >= 30) return 'neutral';
+    return 'bad';
+  };
+
+  const endingType = getEndingType();
+  const ending = storyConfig.endings[endingType];
+
+  return (
+    <div style={{
+      textAlign: 'center',
+      maxWidth: '600px',
+      margin: '0 auto',
+      padding: '40px 20px'
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: '20px',
+        padding: '40px',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
+      }}>
+        <div style={{ fontSize: '5rem', marginBottom: '20px' }}>
+          {endingType === 'perfect' ? '🌟' : 
+           endingType === 'good' ? '😊' : 
+           endingType === 'neutral' ? '😐' : '😔'}
+        </div>
+        
+        <h2 style={{
+          marginBottom: '15px',
+          color: storyConfig.theme?.primaryColor || '#e91e63'
+        }}>
+          {t(ending?.title || { 'zh-tw': '遊戲結束', 'zh-cn': '游戏结束', 'en': 'Game Over' })}
+        </h2>
+        
+        <p style={{
+          marginBottom: '30px',
+          fontSize: '18px',
+          lineHeight: '1.6'
+        }}>
+          {t(ending?.description || { 'zh-tw': '感謝你的參與！', 'zh-cn': '感谢你的参与！', 'en': 'Thank you for playing!' })}
+        </p>
+
+        {/* Final stats */}
+        <div style={{
+          background: '#f8f9fa',
+          borderRadius: '15px',
+          padding: '20px',
+          marginBottom: '30px'
+        }}>
+          <h3 style={{ marginBottom: '15px' }}>
+            {t({ 'zh-tw': '最終統計', 'zh-cn': '最终统计', 'en': 'Final Statistics' })}
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: '15px',
+            textAlign: 'center'
+          }}>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#e91e63' }}>
+                {Math.round(averageAffection)}%
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                {t({ 'zh-tw': '平均好感度', 'zh-cn': '平均好感度', 'en': 'Avg Affection' })}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196f3' }}>
+                {gameState.playerScore}
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                {t({ 'zh-tw': '總分', 'zh-cn': '总分', 'en': 'Total Score' })}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4caf50' }}>
+                {gameState.gameStats.minigamesCompleted}
+              </div>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                {t({ 'zh-tw': '完成活動', 'zh-cn': '完成活动', 'en': 'Activities Done' })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{
+          display: 'flex',
+          gap: '15px',
+          justifyContent: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            onClick={resetGame}
+            style={{
+              background: storyConfig.theme?.primaryColor || '#e91e63',
+              color: 'white',
+              border: 'none',
+              borderRadius: '25px',
+              padding: '12px 30px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            {t({ 'zh-tw': '重新開始', 'zh-cn': '重新开始', 'en': 'Play Again' })}
+          </button>
+          
+          <button
+            onClick={goBackToLearn}
+            style={{
+              background: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '25px',
+              padding: '12px 30px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            {t({ 'zh-tw': '返回選單', 'zh-cn': '返回选单', 'en': 'Back to Menu' })}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RomancePageRefactored;
